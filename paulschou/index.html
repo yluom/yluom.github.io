@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Convertisseur Paulschou ASCII/binaire/hexa</title>
-    <meta name="description" content="Utilitaire en ligne pour convertir ASCII/ANSI, HEX, Binary, Base64, etc.">
-    <meta name="keywords" content="convertisseur,binaire,hexadécimal,binary encoder,binary decoder,binary translator,binary tools,binary converter,hexadecimal encoder/decoder,base 64">
+    <title>Paulschou Converter - ASCII/Binary/Hex</title>
+    <meta name="description" content="Online utility to convert ASCII/ANSI, HEX, Binary, Base64, etc.">
+    <meta name="keywords" content="converter,binary,hexadecimal,binary encoder,binary decoder,binary translator,binary tools,binary converter,hexadecimal encoder/decoder,base 64">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,12 +21,15 @@
             --text: #333;
             --text-light: #666;
             --text-muted: #999;
-            --accent: #4a7c9b;
-            --accent-hover: #3a6a87;
-            --btn-bg: #eaeaea;
-            --btn-hover: #ddd;
             --shadow: 0 2px 8px rgba(0,0,0,0.06);
             --shadow-hover: 0 4px 16px rgba(0,0,0,0.1);
+
+            /* Format colors */
+            --color-text: #4a7c9b;
+            --color-dec: #c17f24;
+            --color-bin: #3a9a5b;
+            --color-hex: #7c5bad;
+            --color-b64: #2a9d8f;
         }
 
         * {
@@ -42,7 +45,7 @@
             color: var(--text);
             background: var(--bg);
             min-height: 100vh;
-            padding: 2rem 1rem;
+            padding: 1.5rem 1rem;
         }
 
         .container {
@@ -53,37 +56,26 @@
         /* Header */
         header {
             text-align: center;
-            margin-bottom: 2rem;
+            margin-bottom: 1.25rem;
         }
 
         h1 {
-            font-size: 1.75rem;
+            font-size: 1.5rem;
             font-weight: 600;
             color: var(--text);
-            margin-bottom: 0.75rem;
+            margin-bottom: 0.5rem;
         }
 
         .intro {
-            color: var(--text-light);
-            font-size: 0.95rem;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        .intro a {
-            color: var(--accent);
-            text-decoration: none;
-        }
-
-        .intro a:hover {
-            text-decoration: underline;
+            color: var(--text-muted);
+            font-size: 0.85rem;
         }
 
         /* Grid */
         .converter-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 1.25rem;
+            gap: 1rem;
         }
 
         @media (max-width: 640px) {
@@ -97,45 +89,64 @@
             background: var(--panel-bg);
             border: 1px solid var(--border);
             border-radius: 8px;
-            padding: 1.25rem;
+            padding: 1rem;
             transition: all 0.2s ease;
             box-shadow: var(--shadow);
+            position: relative;
+            border-left: 3px solid var(--border);
         }
 
         .panel:hover {
-            border-color: var(--border-hover);
             box-shadow: var(--shadow-hover);
         }
 
-        .panel:focus-within {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(74, 124, 155, 0.1);
+        /* Panel color variants */
+        .panel[data-format="text"] { --panel-color: var(--color-text); }
+        .panel[data-format="dec"] { --panel-color: var(--color-dec); }
+        .panel[data-format="bin"] { --panel-color: var(--color-bin); }
+        .panel[data-format="hex"] { --panel-color: var(--color-hex); }
+        .panel[data-format="b64"] { --panel-color: var(--color-b64); }
+
+        /* Active source state */
+        .panel.is-source {
+            border-left-color: var(--panel-color);
+            background: linear-gradient(90deg, color-mix(in srgb, var(--panel-color) 4%, white) 0%, white 100%);
+        }
+
+        .panel.is-source .panel-badge {
+            background: var(--panel-color);
+            color: white;
         }
 
         .panel-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 0.75rem;
+            margin-bottom: 0.5rem;
         }
 
         .panel-title {
             font-weight: 600;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             color: var(--text);
         }
 
         .panel-title a {
-            color: var(--accent);
+            color: inherit;
             text-decoration: none;
+            transition: color 0.15s;
+        }
+
+        .panel.is-source .panel-title a {
+            color: var(--panel-color);
         }
 
         .panel-title a:hover {
-            text-decoration: underline;
+            opacity: 0.8;
         }
 
         .panel-badge {
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.05em;
@@ -143,14 +154,15 @@
             background: var(--input-bg);
             padding: 0.2rem 0.5rem;
             border-radius: 4px;
+            transition: all 0.2s ease;
         }
 
         textarea {
             width: 100%;
-            height: 140px;
-            padding: 0.875rem;
+            height: 100px;
+            padding: 0.75rem;
             font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-            font-size: 0.875rem;
+            font-size: 0.8rem;
             line-height: 1.5;
             color: var(--text);
             background: var(--input-bg);
@@ -166,61 +178,23 @@
 
         textarea:focus {
             outline: none;
-            border-color: var(--accent);
+            border-color: var(--panel-color, var(--border));
             background: #fff;
-            box-shadow: inset 0 1px 3px rgba(0,0,0,0.04);
         }
 
-        .panel-actions {
-            display: flex;
-            gap: 0.5rem;
-            margin-top: 0.875rem;
+        .panel.is-source textarea {
+            border-color: color-mix(in srgb, var(--panel-color) 40%, transparent);
         }
 
-        button {
-            flex: 1;
-            padding: 0.625rem 1rem;
-            font-family: inherit;
-            font-size: 0.875rem;
-            font-weight: 600;
-            color: var(--text);
-            background: var(--btn-bg);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.15s ease;
+        /* Invalid input state */
+        .panel.is-invalid textarea {
+            border-color: #e53e3e;
+            background: #fff5f5;
         }
 
-        button:hover {
-            background: var(--btn-hover);
-            border-color: var(--border-hover);
-        }
-
-        button:active {
-            transform: translateY(1px);
-        }
-
-        .btn-primary {
-            background: var(--accent);
-            border-color: var(--accent);
-            color: #fff;
-        }
-
-        .btn-primary:hover {
-            background: var(--accent-hover);
-            border-color: var(--accent-hover);
-        }
-
-        .btn-clear {
-            flex: 0 0 auto;
-            padding: 0.625rem 0.875rem;
-            color: var(--text-muted);
-        }
-
-        .btn-clear:hover {
-            color: var(--text);
-            background: #ffe5e5;
-            border-color: #f5c6c6;
+        .panel.is-invalid .panel-badge {
+            background: #e53e3e;
+            color: white;
         }
 
         /* Text panel spans full width */
@@ -229,31 +203,29 @@
         }
 
         .panel-text textarea {
-            height: 120px;
-        }
-
-        .panel-text .panel-actions {
-            justify-content: center;
-            max-width: 400px;
-            margin: 0.875rem auto 0;
+            height: 80px;
         }
 
         /* Footer */
         footer {
-            margin-top: 2.5rem;
-            padding-top: 1.5rem;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
             border-top: 1px solid var(--border);
             text-align: center;
         }
 
         .credits {
-            font-size: 0.875rem;
-            color: var(--text-light);
-            line-height: 1.8;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
         }
 
         .credits a {
-            color: var(--accent);
+            color: var(--color-text);
             text-decoration: none;
         }
 
@@ -261,154 +233,119 @@
             text-decoration: underline;
         }
 
-        .credits .greeting {
-            color: var(--text-muted);
-            font-style: italic;
-        }
-
-        /* Toast */
-        .toast {
-            position: fixed;
-            bottom: 1.5rem;
-            left: 50%;
-            transform: translateX(-50%) translateY(20px);
-            background: var(--text);
-            color: #fff;
-            padding: 0.75rem 1.25rem;
-            border-radius: 6px;
-            font-size: 0.875rem;
-            opacity: 0;
-            transition: all 0.25s ease;
-            z-index: 100;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-
-        .toast.show {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-        }
-
-        /* Keyboard hint */
-        .hint {
-            text-align: center;
-            margin-top: 0.5rem;
-            font-size: 0.8rem;
-            color: var(--text-muted);
-        }
-
-        kbd {
-            display: inline-block;
-            padding: 0.15em 0.4em;
-            font-family: inherit;
-            font-size: 0.85em;
-            background: var(--input-bg);
-            border: 1px solid var(--border);
-            border-radius: 3px;
-            box-shadow: 0 1px 0 var(--border);
+        .credits .sep {
+            color: var(--border);
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>Convertisseur Paulschou</h1>
-            <p class="intro">
-                Cet utilitaire code et décode des caractères
-                <a href="https://fr.wikipedia.org/wiki/ASCII" target="_blank">ASCII</a> ainsi que des caractères étendus selon le codage
-                <a href="https://fr.wikipedia.org/wiki/Windows-1252" target="_blank">ANSI</a>. Le code ASCII proprement dit ne couvre que les caractères de numéros 0 à 127.
-            </p>
+            <h1>Paulschou Converter</h1>
+            <p class="intro">Live encode & decode — type in any field</p>
         </header>
 
         <main class="converter-grid">
             <!-- Text Input -->
-            <div class="panel panel-text">
+            <div class="panel panel-text" data-format="text">
                 <div class="panel-header">
-                    <span class="panel-title"><a href="https://fr.wikipedia.org/wiki/ASCII" target="_blank">TEXTE</a></span>
-                    <span class="panel-badge">Source</span>
+                    <span class="panel-title"><a href="https://en.wikipedia.org/wiki/ASCII" target="_blank">TEXT</a></span>
+                    <span class="panel-badge">TXT</span>
                 </div>
-                <textarea id="text-input" placeholder="Entrez votre texte ici..."></textarea>
-                <div class="panel-actions">
-                    <button class="btn-primary" onclick="encodeAll()">Encoder</button>
-                    <button class="btn-clear" onclick="clearAll()" title="Effacer tout">✕</button>
-                </div>
-                <p class="hint"><kbd>Ctrl</kbd> + <kbd>Entrée</kbd> pour encoder</p>
+                <textarea id="text-input" placeholder="Enter your text here..."></textarea>
             </div>
 
             <!-- ASCII Decimal -->
-            <div class="panel">
+            <div class="panel" data-format="dec">
                 <div class="panel-header">
-                    <span class="panel-title"><a href="https://fr.wikipedia.org/wiki/ASCII" target="_blank">ASCII Décimal</a></span>
+                    <span class="panel-title"><a href="https://en.wikipedia.org/wiki/ASCII" target="_blank">ASCII Decimal</a></span>
                     <span class="panel-badge">DEC</span>
                 </div>
                 <textarea id="decimal-input" placeholder="065 083 067 073 073..."></textarea>
-                <div class="panel-actions">
-                    <button onclick="decodeDecimal()">Décoder</button>
-                </div>
             </div>
 
             <!-- Binary -->
-            <div class="panel">
+            <div class="panel" data-format="bin">
                 <div class="panel-header">
-                    <span class="panel-title"><a href="https://fr.wikipedia.org/wiki/Code_binaire" target="_blank">Binaire</a></span>
+                    <span class="panel-title"><a href="https://en.wikipedia.org/wiki/Binary_code" target="_blank">Binary</a></span>
                     <span class="panel-badge">BIN</span>
                 </div>
                 <textarea id="binary-input" placeholder="01001000 01100101 01101100..."></textarea>
-                <div class="panel-actions">
-                    <button onclick="decodeBinary()">Décoder</button>
-                </div>
             </div>
 
             <!-- Hexadecimal -->
-            <div class="panel">
+            <div class="panel" data-format="hex">
                 <div class="panel-header">
-                    <span class="panel-title"><a href="https://fr.wikipedia.org/wiki/Hexad%C3%A9cimal" target="_blank">Hexadécimal</a></span>
+                    <span class="panel-title"><a href="https://en.wikipedia.org/wiki/Hexadecimal" target="_blank">Hexadecimal</a></span>
                     <span class="panel-badge">HEX</span>
                 </div>
                 <textarea id="hex-input" placeholder="48 65 6c 6c 6f..."></textarea>
-                <div class="panel-actions">
-                    <button onclick="decodeHex()">Décoder</button>
-                </div>
             </div>
 
             <!-- Base64 -->
-            <div class="panel">
+            <div class="panel" data-format="b64">
                 <div class="panel-header">
-                    <span class="panel-title"><a href="https://fr.wikipedia.org/wiki/Base64" target="_blank">Base64</a></span>
+                    <span class="panel-title"><a href="https://en.wikipedia.org/wiki/Base64" target="_blank">Base64</a></span>
                     <span class="panel-badge">B64</span>
                 </div>
                 <textarea id="base64-input" placeholder="SGVsbG8gV29ybGQ="></textarea>
-                <div class="panel-actions">
-                    <button onclick="decodeBase64()">Décoder</button>
-                </div>
             </div>
         </main>
 
         <footer>
             <div class="credits">
-                <p class="greeting">Coucou Frédéric :-)</p>
-                <p>Code source originel : <a href="http://home.paulschou.net/tools/xlate/" target="_blank">Paul Schou</a></p>
-                <p>Idée initiale : <a href="http://nickciske.com/binary" target="_blank">Nick Ciske</a></p>
+                <span>Original code: <a href="https://home.paulschou.net/tools/xlate/" target="_blank">Paul Schou</a></span>
+                <span class="sep">·</span>
+                <span>Original idea: <a href="https://x.com/nciske" target="_blank">Nick Ciske</a></span>
+                <span class="sep">·</span>
+                <span><a href="https://github.com/yluom/yluom.github.io/tree/main/paulschou" target="_blank">Source code</a></span>
             </div>
         </footer>
     </div>
 
-    <div class="toast" id="toast"></div>
-
     <script>
-        const textInput = document.getElementById('text-input');
-        const decimalInput = document.getElementById('decimal-input');
-        const binaryInput = document.getElementById('binary-input');
-        const hexInput = document.getElementById('hex-input');
-        const base64Input = document.getElementById('base64-input');
-        const toast = document.getElementById('toast');
+        const inputs = {
+            text: document.getElementById('text-input'),
+            dec: document.getElementById('decimal-input'),
+            bin: document.getElementById('binary-input'),
+            hex: document.getElementById('hex-input'),
+            b64: document.getElementById('base64-input')
+        };
 
-        function showToast(message) {
-            toast.textContent = message;
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 2000);
+        const panels = document.querySelectorAll('.panel');
+        let currentSource = null;
+
+        function setSource(format) {
+            panels.forEach(p => p.classList.remove('is-source'));
+            if (format) {
+                document.querySelector(`[data-format="${format}"]`).classList.add('is-source');
+            }
+            currentSource = format;
         }
 
-        // Encoding
+        function setInvalid(format, isInvalid) {
+            const panel = document.querySelector(`[data-format="${format}"]`);
+            panel.classList.toggle('is-invalid', isInvalid);
+        }
+
+        // Validation functions
+        function isValidDecimal(val) {
+            return !val || /^[\d\s]*$/.test(val);
+        }
+
+        function isValidBinary(val) {
+            return !val || /^[01\s]*$/.test(val);
+        }
+
+        function isValidHex(val) {
+            return !val || /^[0-9a-fA-F\s]*$/.test(val);
+        }
+
+        function isValidBase64(val) {
+            return !val || /^[A-Za-z0-9+/=\s]*$/.test(val);
+        }
+
+        // Encoding functions
         function textToDecimal(text) {
             return Array.from(text).map(c =>
                 c.charCodeAt(0).toString().padStart(3, '0')
@@ -431,13 +368,14 @@
             try {
                 return btoa(unescape(encodeURIComponent(text)));
             } catch (e) {
-                return btoa(text);
+                return '';
             }
         }
 
-        // Decoding
+        // Decoding functions
         function decimalToText(decimal) {
-            const codes = decimal.replace(/[^\d]/g, ' ').trim().split(/\s+/);
+            if (!decimal.trim()) return '';
+            const codes = decimal.replace(/\D/g, ' ').trim().split(/\s+/);
             return codes.map(c => {
                 const n = parseInt(c, 10);
                 return n > 0 ? String.fromCharCode(n) : '';
@@ -446,9 +384,10 @@
 
         function binaryToText(binary) {
             const clean = binary.replace(/[^01]/g, '');
+            if (!clean) return '';
             let result = '';
             for (let i = 0; i < clean.length; i += 8) {
-                const byte = clean.substr(i, 8);
+                const byte = clean.substring(i, i + 8);
                 if (byte.length === 8) {
                     result += String.fromCharCode(parseInt(byte, 2));
                 }
@@ -458,9 +397,10 @@
 
         function hexToText(hex) {
             const clean = hex.replace(/[^0-9a-fA-F]/g, '');
+            if (!clean) return '';
             let result = '';
             for (let i = 0; i < clean.length; i += 2) {
-                const byte = clean.substr(i, 2);
+                const byte = clean.substring(i, i + 2);
                 if (byte.length === 2) {
                     result += String.fromCharCode(parseInt(byte, 16));
                 }
@@ -477,76 +417,71 @@
             }
         }
 
-        // Actions
-        function encodeAll() {
-            const text = textInput.value;
-            if (!text) {
-                showToast('Entrez du texte à encoder');
-                return;
+        // Update all fields from text
+        function updateFromText(text, exclude) {
+            if (exclude !== 'text') inputs.text.value = text;
+            if (exclude !== 'dec') inputs.dec.value = text ? textToDecimal(text) : '';
+            if (exclude !== 'bin') inputs.bin.value = text ? textToBinary(text) : '';
+            if (exclude !== 'hex') inputs.hex.value = text ? textToHex(text) : '';
+            if (exclude !== 'b64') inputs.b64.value = text ? textToBase64(text) : '';
+        }
+
+        // Live conversion handlers
+        inputs.text.addEventListener('input', () => {
+            setSource('text');
+            updateFromText(inputs.text.value, 'text');
+        });
+
+        inputs.dec.addEventListener('input', () => {
+            setSource('dec');
+            const val = inputs.dec.value;
+            const valid = isValidDecimal(val);
+            setInvalid('dec', !valid);
+            if (valid) {
+                const text = decimalToText(val);
+                updateFromText(text, 'dec');
             }
-            decimalInput.value = textToDecimal(text);
-            binaryInput.value = textToBinary(text);
-            hexInput.value = textToHex(text);
-            base64Input.value = textToBase64(text);
-            showToast('Encodage terminé');
-        }
+        });
 
-        function updateAllFrom(text) {
-            textInput.value = text;
-            decimalInput.value = textToDecimal(text);
-            binaryInput.value = textToBinary(text);
-            hexInput.value = textToHex(text);
-            base64Input.value = textToBase64(text);
-        }
-
-        function decodeDecimal() {
-            const val = decimalInput.value;
-            if (!val) { showToast('Entrez des codes décimaux'); return; }
-            updateAllFrom(decimalToText(val));
-            showToast('Décodage terminé');
-        }
-
-        function decodeBinary() {
-            const val = binaryInput.value;
-            if (!val) { showToast('Entrez du code binaire'); return; }
-            updateAllFrom(binaryToText(val));
-            showToast('Décodage terminé');
-        }
-
-        function decodeHex() {
-            const val = hexInput.value;
-            if (!val) { showToast('Entrez du code hexadécimal'); return; }
-            updateAllFrom(hexToText(val));
-            showToast('Décodage terminé');
-        }
-
-        function decodeBase64() {
-            const val = base64Input.value;
-            if (!val) { showToast('Entrez du code Base64'); return; }
-            const text = base64ToText(val);
-            if (!text && val.trim()) {
-                showToast('Base64 invalide');
-                return;
+        inputs.bin.addEventListener('input', () => {
+            setSource('bin');
+            const val = inputs.bin.value;
+            const valid = isValidBinary(val);
+            setInvalid('bin', !valid);
+            if (valid) {
+                const text = binaryToText(val);
+                updateFromText(text, 'bin');
             }
-            updateAllFrom(text);
-            showToast('Décodage terminé');
-        }
+        });
 
-        function clearAll() {
-            textInput.value = '';
-            decimalInput.value = '';
-            binaryInput.value = '';
-            hexInput.value = '';
-            base64Input.value = '';
-            showToast('Effacé');
-        }
-
-        // Keyboard shortcut
-        textInput.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.key === 'Enter') {
-                e.preventDefault();
-                encodeAll();
+        inputs.hex.addEventListener('input', () => {
+            setSource('hex');
+            const val = inputs.hex.value;
+            const valid = isValidHex(val);
+            setInvalid('hex', !valid);
+            if (valid) {
+                const text = hexToText(val);
+                updateFromText(text, 'hex');
             }
+        });
+
+        inputs.b64.addEventListener('input', () => {
+            setSource('b64');
+            const val = inputs.b64.value;
+            const valid = isValidBase64(val);
+            setInvalid('b64', !valid);
+            if (valid) {
+                const text = base64ToText(val);
+                updateFromText(text, 'b64');
+            }
+        });
+
+        // Clear source highlight on blur if empty
+        Object.values(inputs).forEach(input => {
+            input.addEventListener('blur', () => {
+                const allEmpty = Object.values(inputs).every(i => !i.value);
+                if (allEmpty) setSource(null);
+            });
         });
     </script>
 </body>
