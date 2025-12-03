@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convertisseur Paulschou ASCII/binaire/hexa</title>
+    <meta name="description" content="Utilitaire en ligne pour convertir ASCII/ANSI, HEX, Binary, Base64, etc.">
+    <meta name="keywords" content="convertisseur,binaire,hexadécimal,binary encoder,binary decoder,binary translator,binary tools,binary converter,hexadecimal encoder/decoder,base 64">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg: #f5f5f5;
+            --panel-bg: #ffffff;
+            --input-bg: #fafafa;
+            --border: #e0e0e0;
+            --border-hover: #ccc;
+            --text: #333;
+            --text-light: #666;
+            --text-muted: #999;
+            --accent: #4a7c9b;
+            --accent-hover: #3a6a87;
+            --btn-bg: #eaeaea;
+            --btn-hover: #ddd;
+            --shadow: 0 2px 8px rgba(0,0,0,0.06);
+            --shadow-hover: 0 4px 16px rgba(0,0,0,0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Source Sans 3', Arial, Helvetica, sans-serif;
+            font-size: 15px;
+            line-height: 1.5;
+            color: var(--text);
+            background: var(--bg);
+            min-height: 100vh;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 0.75rem;
+        }
+
+        .intro {
+            color: var(--text-light);
+            font-size: 0.95rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .intro a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .intro a:hover {
+            text-decoration: underline;
+        }
+
+        /* Grid */
+        .converter-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.25rem;
+        }
+
+        @media (max-width: 640px) {
+            .converter-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Panel */
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.25rem;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow);
+        }
+
+        .panel:hover {
+            border-color: var(--border-hover);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .panel:focus-within {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(74, 124, 155, 0.1);
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+        }
+
+        .panel-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text);
+        }
+
+        .panel-title a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .panel-title a:hover {
+            text-decoration: underline;
+        }
+
+        .panel-badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            background: var(--input-bg);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 140px;
+            padding: 0.875rem;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            color: var(--text);
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            resize: vertical;
+            transition: all 0.2s ease;
+        }
+
+        textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            background: #fff;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.04);
+        }
+
+        .panel-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.875rem;
+        }
+
+        button {
+            flex: 1;
+            padding: 0.625rem 1rem;
+            font-family: inherit;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text);
+            background: var(--btn-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        button:hover {
+            background: var(--btn-hover);
+            border-color: var(--border-hover);
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            border-color: var(--accent-hover);
+        }
+
+        .btn-clear {
+            flex: 0 0 auto;
+            padding: 0.625rem 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .btn-clear:hover {
+            color: var(--text);
+            background: #ffe5e5;
+            border-color: #f5c6c6;
+        }
+
+        /* Text panel spans full width */
+        .panel-text {
+            grid-column: 1 / -1;
+        }
+
+        .panel-text textarea {
+            height: 120px;
+        }
+
+        .panel-text .panel-actions {
+            justify-content: center;
+            max-width: 400px;
+            margin: 0.875rem auto 0;
+        }
+
+        /* Footer */
+        footer {
+            margin-top: 2.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .credits {
+            font-size: 0.875rem;
+            color: var(--text-light);
+            line-height: 1.8;
+        }
+
+        .credits a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .credits a:hover {
+            text-decoration: underline;
+        }
+
+        .credits .greeting {
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: var(--text);
+            color: #fff;
+            padding: 0.75rem 1.25rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            opacity: 0;
+            transition: all 0.25s ease;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Keyboard hint */
+        .hint {
+            text-align: center;
+            margin-top: 0.5rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        kbd {
+            display: inline-block;
+            padding: 0.15em 0.4em;
+            font-family: inherit;
+            font-size: 0.85em;
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            box-shadow: 0 1px 0 var(--border);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Convertisseur Paulschou</h1>
+            <p class="intro">
+                Cet utilitaire code et décode des caractères
+                <a href="https://fr.wikipedia.org/wiki/ASCII" target="_blank">ASCII</a> ainsi que des caractères étendus selon le codage
+                <a href="https://fr.wikipedia.org/wiki/Windows-1252" target="_blank">ANSI</a>. Le code ASCII proprement dit ne couvre que les caractères de numéros 0 à 127.
+            </p>
+        </header>
+
+        <main class="converter-grid">
+            <!-- Text Input -->
+            <div class="panel panel-text">
+                <div class="panel-header">
+                    <span class="panel-title"><a href="https://fr.wikipedia.org/wiki/ASCII" target="_blank">TEXTE</a></span>
+                    <span class="panel-badge">Source</span>
+                </div>
+                <textarea id="text-input" placeholder="Entrez votre texte ici..."></textarea>
+                <div class="panel-actions">
+                    <button class="btn-primary" onclick="encodeAll()">Encoder</button>
+                    <button class="btn-clear" onclick="clearAll()" title="Effacer tout">✕</button>
+                </div>
+                <p class="hint"><kbd>Ctrl</kbd> + <kbd>Entrée</kbd> pour encoder</p>
+            </div>
+
+            <!-- ASCII Decimal -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title"><a href="https://fr.wikipedia.org/wiki/ASCII" target="_blank">ASCII Décimal</a></span>
+                    <span class="panel-badge">DEC</span>
+                </div>
+                <textarea id="decimal-input" placeholder="065 083 067 073 073..."></textarea>
+                <div class="panel-actions">
+                    <button onclick="decodeDecimal()">Décoder</button>
+                </div>
+            </div>
+
+            <!-- Binary -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title"><a href="https://fr.wikipedia.org/wiki/Code_binaire" target="_blank">Binaire</a></span>
+                    <span class="panel-badge">BIN</span>
+                </div>
+                <textarea id="binary-input" placeholder="01001000 01100101 01101100..."></textarea>
+                <div class="panel-actions">
+                    <button onclick="decodeBinary()">Décoder</button>
+                </div>
+            </div>
+
+            <!-- Hexadecimal -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title"><a href="https://fr.wikipedia.org/wiki/Hexad%C3%A9cimal" target="_blank">Hexadécimal</a></span>
+                    <span class="panel-badge">HEX</span>
+                </div>
+                <textarea id="hex-input" placeholder="48 65 6c 6c 6f..."></textarea>
+                <div class="panel-actions">
+                    <button onclick="decodeHex()">Décoder</button>
+                </div>
+            </div>
+
+            <!-- Base64 -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title"><a href="https://fr.wikipedia.org/wiki/Base64" target="_blank">Base64</a></span>
+                    <span class="panel-badge">B64</span>
+                </div>
+                <textarea id="base64-input" placeholder="SGVsbG8gV29ybGQ="></textarea>
+                <div class="panel-actions">
+                    <button onclick="decodeBase64()">Décoder</button>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <div class="credits">
+                <p class="greeting">Coucou Frédéric :-)</p>
+                <p>Code source originel : <a href="http://home.paulschou.net/tools/xlate/" target="_blank">Paul Schou</a></p>
+                <p>Idée initiale : <a href="http://nickciske.com/binary" target="_blank">Nick Ciske</a></p>
+            </div>
+        </footer>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const textInput = document.getElementById('text-input');
+        const decimalInput = document.getElementById('decimal-input');
+        const binaryInput = document.getElementById('binary-input');
+        const hexInput = document.getElementById('hex-input');
+        const base64Input = document.getElementById('base64-input');
+        const toast = document.getElementById('toast');
+
+        function showToast(message) {
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        // Encoding
+        function textToDecimal(text) {
+            return Array.from(text).map(c =>
+                c.charCodeAt(0).toString().padStart(3, '0')
+            ).join(' ');
+        }
+
+        function textToBinary(text) {
+            return Array.from(text).map(c =>
+                c.charCodeAt(0).toString(2).padStart(8, '0')
+            ).join(' ');
+        }
+
+        function textToHex(text) {
+            return Array.from(text).map(c =>
+                c.charCodeAt(0).toString(16).padStart(2, '0')
+            ).join(' ');
+        }
+
+        function textToBase64(text) {
+            try {
+                return btoa(unescape(encodeURIComponent(text)));
+            } catch (e) {
+                return btoa(text);
+            }
+        }
+
+        // Decoding
+        function decimalToText(decimal) {
+            const codes = decimal.replace(/[^\d]/g, ' ').trim().split(/\s+/);
+            return codes.map(c => {
+                const n = parseInt(c, 10);
+                return n > 0 ? String.fromCharCode(n) : '';
+            }).join('');
+        }
+
+        function binaryToText(binary) {
+            const clean = binary.replace(/[^01]/g, '');
+            let result = '';
+            for (let i = 0; i < clean.length; i += 8) {
+                const byte = clean.substr(i, 8);
+                if (byte.length === 8) {
+                    result += String.fromCharCode(parseInt(byte, 2));
+                }
+            }
+            return result;
+        }
+
+        function hexToText(hex) {
+            const clean = hex.replace(/[^0-9a-fA-F]/g, '');
+            let result = '';
+            for (let i = 0; i < clean.length; i += 2) {
+                const byte = clean.substr(i, 2);
+                if (byte.length === 2) {
+                    result += String.fromCharCode(parseInt(byte, 16));
+                }
+            }
+            return result;
+        }
+
+        function base64ToText(b64) {
+            try {
+                return decodeURIComponent(escape(atob(b64.trim())));
+            } catch (e) {
+                try { return atob(b64.trim()); }
+                catch (e2) { return ''; }
+            }
+        }
+
+        // Actions
+        function encodeAll() {
+            const text = textInput.value;
+            if (!text) {
+                showToast('Entrez du texte à encoder');
+                return;
+            }
+            decimalInput.value = textToDecimal(text);
+            binaryInput.value = textToBinary(text);
+            hexInput.value = textToHex(text);
+            base64Input.value = textToBase64(text);
+            showToast('Encodage terminé');
+        }
+
+        function updateAllFrom(text) {
+            textInput.value = text;
+            decimalInput.value = textToDecimal(text);
+            binaryInput.value = textToBinary(text);
+            hexInput.value = textToHex(text);
+            base64Input.value = textToBase64(text);
+        }
+
+        function decodeDecimal() {
+            const val = decimalInput.value;
+            if (!val) { showToast('Entrez des codes décimaux'); return; }
+            updateAllFrom(decimalToText(val));
+            showToast('Décodage terminé');
+        }
+
+        function decodeBinary() {
+            const val = binaryInput.value;
+            if (!val) { showToast('Entrez du code binaire'); return; }
+            updateAllFrom(binaryToText(val));
+            showToast('Décodage terminé');
+        }
+
+        function decodeHex() {
+            const val = hexInput.value;
+            if (!val) { showToast('Entrez du code hexadécimal'); return; }
+            updateAllFrom(hexToText(val));
+            showToast('Décodage terminé');
+        }
+
+        function decodeBase64() {
+            const val = base64Input.value;
+            if (!val) { showToast('Entrez du code Base64'); return; }
+            const text = base64ToText(val);
+            if (!text && val.trim()) {
+                showToast('Base64 invalide');
+                return;
+            }
+            updateAllFrom(text);
+            showToast('Décodage terminé');
+        }
+
+        function clearAll() {
+            textInput.value = '';
+            decimalInput.value = '';
+            binaryInput.value = '';
+            hexInput.value = '';
+            base64Input.value = '';
+            showToast('Effacé');
+        }
+
+        // Keyboard shortcut
+        textInput.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                encodeAll();
+            }
+        });
+    </script>
+</body>
+</html>
