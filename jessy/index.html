@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<!--
+  ============================================================
+  L'ÉVANGILE SELON JESSY ESGUN
+  Page hommage 100% WTF : muscu PPL, Valorant, Rocket League,
+  finance de rue et prophéties clutch 3v1.
+  Vanilla HTML/CSS/JS, zéro dépendance. Que des têtes.
+  ============================================================
+-->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JESSY ESGUN — Le Messie du Clutch 3v1</title>
+<meta name="description" content="L'Évangile selon Jessy Esgun. PPL, Astra shit, Rocket League et richesse spirituelle.">
+<link rel="icon" href="img/jessy-head-sm.png">
+<style>
+/* ============ RESET & BASE ============ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --or:#ffcf4d;
+  --or2:#ff9a1f;
+  --rouge:#ff4655;      /* Valorant */
+  --cyan:#00e5ff;
+  --violet:#8b5cff;     /* Astra */
+  --vert:#39ff14;
+  --nuit:#07060f;
+  --nuit2:#120c22;
+}
+html{scroll-behavior:smooth;overflow-x:hidden;max-width:100%}
+body{
+  background:var(--nuit);
+  color:#f4eddb;
+  font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;
+  overflow-x:hidden;
+  cursor:crosshair;
+}
+img{max-width:100%;display:block}
+
+/* ============ FOND COSMIQUE ANIMÉ ============ */
+.cosmos{
+  position:fixed;inset:0;z-index:-3;
+  background:
+    radial-gradient(1200px 800px at 50% -10%, #3a1d6e 0%, transparent 60%),
+    radial-gradient(900px 600px at 90% 20%, #6e1d2f 0%, transparent 55%),
+    radial-gradient(900px 700px at 5% 70%, #12405c 0%, transparent 55%),
+    linear-gradient(180deg,#0b0718,#07060f 60%,#140a1f);
+  animation:respire 14s ease-in-out infinite alternate;
+}
+@keyframes respire{from{filter:hue-rotate(0deg) saturate(1)}to{filter:hue-rotate(35deg) saturate(1.45)}}
+
+.etoiles{position:fixed;inset:0;z-index:-2;pointer-events:none;opacity:.5;
+  background-image:
+    radial-gradient(2px 2px at 20px 30px,#fff,transparent),
+    radial-gradient(2px 2px at 140px 80px,#ffe9a8,transparent),
+    radial-gradient(1px 1px at 300px 200px,#fff,transparent),
+    radial-gradient(2px 2px at 420px 120px,#9ff,transparent),
+    radial-gradient(1px 1px at 520px 320px,#fff,transparent);
+  background-size:600px 400px;
+  animation:defile 60s linear infinite;
+}
+@keyframes defile{to{background-position:600px 400px}}
+
+.rayons{
+  position:fixed;top:-50vh;left:50%;width:200vmax;height:200vmax;z-index:-1;
+  transform:translateX(-50%);pointer-events:none;opacity:.13;
+  background:repeating-conic-gradient(from 0deg,var(--or) 0deg 4deg,transparent 4deg 14deg);
+  animation:tourne 90s linear infinite;
+  mask-image:radial-gradient(circle,#000 0%,transparent 62%);
+  -webkit-mask-image:radial-gradient(circle,#000 0%,transparent 62%);
+}
+@keyframes tourne{to{transform:translateX(-50%) rotate(360deg)}}
+
+/* ============ SWARM DE TÊTES ============ */
+#swarm{position:fixed;inset:0;z-index:5;pointer-events:none;overflow:hidden}
+.tete{
+  position:absolute;width:64px;height:64px;
+  background:url(img/jessy-head-sm.png) center/contain no-repeat;
+  filter:drop-shadow(0 0 10px rgba(255,207,77,.75));
+  will-change:transform;
+}
+.tete.mini{width:34px;height:34px;opacity:.85}
+.tete.mega{width:120px;height:120px}
+
+/* traînée de curseur */
+.trace{
+  position:fixed;width:38px;height:38px;z-index:6;pointer-events:none;
+  background:url(img/jessy-head-sm.png) center/contain no-repeat;
+  animation:traceOut .9s ease-out forwards;
+}
+@keyframes traceOut{
+  from{transform:scale(1) rotate(0deg);opacity:.95}
+  to{transform:scale(.1) rotate(300deg) translateY(40px);opacity:0}
+}
+
+/* ============ LAYOUT ============ */
+main{position:relative;z-index:10}
+section{padding:clamp(48px,8vw,110px) 20px;position:relative}
+.wrap{max-width:1080px;margin:0 auto}
+
+h1,h2,h3{font-family:"Impact","Haettenschweiler","Arial Black",sans-serif;letter-spacing:.02em;line-height:1}
+h2{
+  font-size:clamp(30px,6vw,64px);text-transform:uppercase;text-align:center;
+  background:linear-gradient(100deg,var(--or),#fff8dc 30%,var(--or2) 55%,var(--or));
+  background-size:280% 100%;
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 4px 0 rgba(0,0,0,.55));
+  animation:doreDefile 5s linear infinite;
+  margin-bottom:14px;
+}
+@keyframes doreDefile{to{background-position:280% 0}}
+.sous{text-align:center;opacity:.72;font-style:italic;margin-bottom:38px;font-size:clamp(13px,2.2vw,17px)}
+
+/* ============ HERO ============ */
+#hero{min-height:100svh;display:grid;place-items:center;text-align:center;padding-top:70px}
+.halo{position:relative;width:min(70vw,340px);aspect-ratio:1;margin:0 auto 26px;isolation:isolate}
+.halo::before{
+  content:"";position:absolute;inset:-22%;border-radius:50%;
+  background:conic-gradient(var(--or),var(--rouge),var(--violet),var(--cyan),var(--or));
+  filter:blur(22px);opacity:.85;animation:tourne 6s linear infinite;z-index:-1;
+}
+.halo::after{
+  content:"";position:absolute;inset:-6%;border-radius:50%;
+  border:3px dashed rgba(255,207,77,.85);animation:tourne 24s linear infinite reverse;
+}
+.halo img{
+  width:100%;height:100%;object-fit:cover;border-radius:50%;
+  border:6px solid var(--or);
+  box-shadow:0 0 60px rgba(255,207,77,.6),inset 0 0 40px rgba(0,0,0,.5);
+  animation:flotte 4.5s ease-in-out infinite;
+}
+@keyframes flotte{0%,100%{transform:translateY(0) rotate(-1.5deg)}50%{transform:translateY(-18px) rotate(1.5deg)}}
+
+h1{
+  font-size:clamp(42px,12vw,132px);text-transform:uppercase;
+  color:#fff;
+  text-shadow:
+    0 0 12px var(--or), 3px 3px 0 var(--rouge), -3px -3px 0 var(--cyan),
+    0 0 60px rgba(255,207,77,.8);
+  animation:pulseTitre 2.4s ease-in-out infinite;
+}
+@keyframes pulseTitre{50%{transform:scale(1.035) rotate(-.6deg)}}
+
+.tagline{margin-top:16px;font-size:clamp(15px,3.4vw,26px);font-weight:bold;letter-spacing:.08em;color:var(--or)}
+#tape{display:block;margin-top:12px;min-height:2.6em;font-family:"Courier New",monospace;color:var(--vert);font-size:clamp(13px,2.6vw,19px)}
+#tape::after{content:"▌";animation:blink .7s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+
+.badges{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:26px}
+.badge{
+  border:2px solid var(--or);border-radius:999px;padding:7px 16px;font-size:13px;font-weight:bold;
+  text-transform:uppercase;background:rgba(255,207,77,.08);backdrop-filter:blur(4px);
+  animation:tremble 3s ease-in-out infinite;
+}
+.badge:nth-child(2n){animation-delay:.4s;border-color:var(--rouge);color:#ffc9cf;background:rgba(255,70,85,.1)}
+.badge:nth-child(3n){animation-delay:.8s;border-color:var(--cyan);color:#c4f7ff;background:rgba(0,229,255,.08)}
+@keyframes tremble{0%,100%{transform:translateY(0) rotate(0)}25%{transform:translateY(-4px) rotate(-2deg)}75%{transform:translateY(4px) rotate(2deg)}}
+
+.fleche{margin-top:40px;font-size:34px;animation:bond 1.4s ease-in-out infinite;color:var(--or)}
+@keyframes bond{50%{transform:translateY(14px)}}
+
+/* ============ BANDEAU DÉFILANT ============ */
+.marquee{
+  overflow:hidden;white-space:nowrap;border-top:3px solid var(--or);border-bottom:3px solid var(--or);
+  background:linear-gradient(90deg,rgba(255,70,85,.25),rgba(139,92,255,.25));
+  padding:12px 0;font-family:"Impact",sans-serif;font-size:clamp(16px,3.4vw,28px);
+  text-transform:uppercase;letter-spacing:.06em;
+}
+.marquee span{display:inline-block;padding-left:100%;animation:glisse 26s linear infinite}
+.marquee.rev span{animation-duration:34s;animation-direction:reverse;color:var(--cyan)}
+@keyframes glisse{to{transform:translateX(-200%)}}
+
+/* ============ VERSETS ============ */
+.parchemin{
+  background:linear-gradient(160deg,rgba(255,207,77,.1),rgba(0,0,0,.55));
+  border-left:5px solid var(--or);border-radius:0 16px 16px 0;
+  padding:22px 24px;margin:0 0 18px;position:relative;
+  box-shadow:0 10px 40px rgba(0,0,0,.5);
+  transition:transform .35s cubic-bezier(.2,1.4,.4,1),box-shadow .35s;
+}
+.parchemin:hover{transform:translateX(14px) rotate(-.8deg) scale(1.02);box-shadow:0 0 44px rgba(255,207,77,.4)}
+.parchemin b{color:var(--or);display:block;margin-bottom:6px;font-size:13px;letter-spacing:.14em;text-transform:uppercase}
+.parchemin p{font-size:clamp(15px,2.6vw,19px);line-height:1.65}
+.parchemin::after{
+  content:"";position:absolute;right:14px;top:14px;width:42px;height:42px;
+  background:url(img/jessy-head-sm.png) center/contain no-repeat;opacity:.18;
+  animation:tourne 12s linear infinite;
+}
+
+/* ============ STATS ============ */
+.grille{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(215px,1fr))}
+.carte{
+  background:rgba(10,8,20,.7);border:2px solid rgba(255,207,77,.35);border-radius:18px;
+  padding:22px 18px;text-align:center;position:relative;overflow:hidden;
+  backdrop-filter:blur(6px);
+  transition:transform .3s,border-color .3s;
+}
+.carte:hover{transform:translateY(-10px) rotate(1.4deg);border-color:var(--or)}
+.carte::before{
+  content:"";position:absolute;inset:-60% -10%;
+  background:linear-gradient(115deg,transparent 40%,rgba(255,255,255,.16) 50%,transparent 60%);
+  animation:brille 4.5s linear infinite;
+}
+@keyframes brille{to{transform:translateX(120%)}}
+.carte .val{
+  font-family:"Impact",sans-serif;font-size:clamp(30px,7vw,52px);color:var(--or);
+  text-shadow:0 0 22px rgba(255,207,77,.65);display:block;line-height:1;
+}
+.carte .lib{font-size:12px;text-transform:uppercase;letter-spacing:.14em;opacity:.75;margin-top:8px;display:block}
+.carte .note{font-size:12px;opacity:.5;margin-top:8px;font-style:italic}
+
+/* ============ ASTRA ============ */
+#astra{background:linear-gradient(180deg,rgba(139,92,255,.16),transparent)}
+.glitch{
+  position:relative;display:inline-block;font-family:"Impact",sans-serif;
+  font-size:clamp(38px,11vw,120px);text-transform:uppercase;color:#fff;
+}
+.glitch::before,.glitch::after{
+  content:attr(data-txt);position:absolute;inset:0;
+}
+.glitch::before{color:var(--rouge);animation:gl1 2.2s infinite steps(2)}
+.glitch::after{color:var(--cyan);animation:gl2 1.7s infinite steps(2)}
+@keyframes gl1{0%,100%{clip-path:inset(0 0 82% 0);transform:translate(-4px,-2px)}50%{clip-path:inset(58% 0 18% 0);transform:translate(5px,2px)}}
+@keyframes gl2{0%,100%{clip-path:inset(72% 0 4% 0);transform:translate(4px,2px)}50%{clip-path:inset(14% 0 62% 0);transform:translate(-5px,-3px)}}
+
+.trou{
+  width:min(64vw,260px);aspect-ratio:1;margin:30px auto;border-radius:50%;
+  background:radial-gradient(circle,#1a0b33 20%,var(--violet) 55%,#2b0f5c 75%,transparent 78%);
+  box-shadow:0 0 90px var(--violet),inset 0 0 60px #000;
+  display:grid;place-items:center;
+  animation:tourne 8s linear infinite,pulseTrou 3s ease-in-out infinite;
+  cursor:pointer;
+}
+@keyframes pulseTrou{50%{box-shadow:0 0 150px var(--violet),inset 0 0 80px #000}}
+.trou img{width:52%;border-radius:50%;animation:tourne 8s linear infinite reverse;border:3px solid rgba(255,255,255,.6)}
+
+/* ============ COMMANDEMENTS ============ */
+ol.comm{list-style:none;counter-reset:c;max-width:760px;margin:0 auto}
+ol.comm li{
+  counter-increment:c;position:relative;padding:16px 16px 16px 68px;margin-bottom:12px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,207,77,.22);border-radius:14px;
+  font-size:clamp(14px,2.5vw,18px);
+  transition:background .3s,transform .3s;
+}
+ol.comm li:hover{background:rgba(255,207,77,.12);transform:scale(1.025)}
+ol.comm li::before{
+  content:counter(c);position:absolute;left:16px;top:50%;transform:translateY(-50%);
+  width:38px;height:38px;border-radius:50%;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--or),var(--or2));color:#160f00;
+  font-family:"Impact",sans-serif;font-size:20px;
+  box-shadow:0 0 18px rgba(255,207,77,.55);
+  animation:tremble 4s ease-in-out infinite;
+}
+
+/* ============ BOUTONS ============ */
+.actions{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin-top:34px}
+button.btn{
+  font-family:"Impact",sans-serif;font-size:clamp(15px,3vw,22px);text-transform:uppercase;
+  letter-spacing:.05em;padding:14px 26px;border:none;border-radius:14px;cursor:pointer;
+  color:#12080a;background:linear-gradient(135deg,var(--or),var(--or2));
+  box-shadow:0 6px 0 #8a5a00,0 0 34px rgba(255,207,77,.5);
+  transition:transform .12s,box-shadow .12s,filter .2s;
+}
+button.btn:hover{filter:brightness(1.12)}
+button.btn:active{transform:translateY(6px);box-shadow:0 0 0 #8a5a00,0 0 24px rgba(255,207,77,.5)}
+button.btn.rouge{background:linear-gradient(135deg,var(--rouge),#b3121f);color:#fff;box-shadow:0 6px 0 #6d0a14,0 0 34px rgba(255,70,85,.5)}
+button.btn.violet{background:linear-gradient(135deg,var(--violet),#4a1fb3);color:#fff;box-shadow:0 6px 0 #2c0f6e,0 0 34px rgba(139,92,255,.55)}
+button.btn.cyan{background:linear-gradient(135deg,var(--cyan),#0088a8);color:#02222a;box-shadow:0 6px 0 #005f75,0 0 34px rgba(0,229,255,.5)}
+
+#compteur{
+  text-align:center;margin-top:26px;font-family:"Courier New",monospace;
+  font-size:clamp(13px,2.4vw,17px);color:var(--vert);
+}
+#compteur b{font-size:1.5em;text-shadow:0 0 14px var(--vert)}
+
+/* ============ PROPHÉTIE ============ */
+#oracle{
+  max-width:720px;margin:26px auto 0;min-height:110px;padding:22px;
+  border:2px dashed var(--cyan);border-radius:16px;text-align:center;
+  font-size:clamp(15px,2.8vw,21px);font-style:italic;background:rgba(0,229,255,.06);
+  display:grid;place-items:center;
+}
+
+/* ============ ROCKET LEAGUE ============ */
+.piste{
+  position:relative;height:150px;margin:26px 0;border-radius:16px;overflow:hidden;
+  background:linear-gradient(180deg,#06131f,#0b2540);border:2px solid rgba(0,229,255,.35);
+}
+.piste::after{
+  content:"";position:absolute;bottom:0;left:0;right:0;height:52%;
+  background:repeating-linear-gradient(90deg,rgba(0,229,255,.25) 0 2px,transparent 2px 60px);
+  transform:perspective(120px) rotateX(58deg);transform-origin:bottom;
+  animation:route .6s linear infinite;
+}
+@keyframes route{to{background-position:60px 0}}
+.balle{
+  position:absolute;left:6%;bottom:22px;width:52px;height:52px;border-radius:50%;
+  background:url(img/jessy-head-sm.png) center/cover no-repeat;
+  border:3px solid #fff;box-shadow:0 0 24px var(--cyan);
+  animation:aerial 3.4s cubic-bezier(.4,-.2,.6,1.3) infinite;
+}
+@keyframes aerial{
+  0%{left:4%;bottom:16px;transform:rotate(0)}
+  45%{bottom:96px}
+  100%{left:88%;bottom:16px;transform:rotate(900deg)}
+}
+.boost{
+  position:absolute;top:12px;right:14px;font-family:"Courier New",monospace;color:var(--cyan);
+  font-size:13px;letter-spacing:.1em;animation:blink 1.1s steps(1) infinite;
+}
+
+/* ============ MUSCU ============ */
+.split{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+.jour{
+  border:2px solid rgba(255,70,85,.4);border-radius:16px;padding:18px;background:rgba(255,70,85,.07);
+  transition:transform .3s,background .3s;
+}
+.jour:hover{transform:rotate(-2deg) scale(1.04);background:rgba(255,70,85,.16)}
+.jour h4{font-family:"Impact",sans-serif;font-size:24px;color:var(--rouge);text-transform:uppercase;margin-bottom:8px}
+.jour ul{list-style:none;font-size:14px;line-height:1.9;opacity:.9}
+.jour li::before{content:"🦍 ";}
+
+/* ============ FOOTER ============ */
+footer{
+  text-align:center;padding:52px 20px 90px;border-top:3px solid var(--or);
+  background:linear-gradient(180deg,transparent,rgba(255,207,77,.09));
+  font-size:13px;opacity:.8;line-height:2;
+}
+footer img{width:74px;margin:0 auto 14px;border-radius:50%;border:3px solid var(--or);animation:flotte 5s ease-in-out infinite}
+footer a{color:var(--or)}
+
+/* ============ EFFETS GLOBAUX ============ */
+body.secousse{animation:shake .5s cubic-bezier(.36,.07,.19,.97)}
+@keyframes shake{10%,90%{transform:translate(-3px,1px) rotate(-.4deg)}20%,80%{transform:translate(6px,-2px) rotate(.6deg)}30%,50%,70%{transform:translate(-9px,3px) rotate(-.8deg)}40%,60%{transform:translate(9px,-3px) rotate(.8deg)}}
+body.rave{animation:rave .28s steps(1) infinite}
+@keyframes rave{0%{filter:hue-rotate(0) saturate(2)}33%{filter:hue-rotate(140deg) saturate(3) invert(.08)}66%{filter:hue-rotate(280deg) saturate(2.5)}}
+
+#flash{position:fixed;inset:0;z-index:40;pointer-events:none;opacity:0;background:radial-gradient(circle,#fff,transparent 70%)}
+#flash.on{animation:flashOn .55s ease-out}
+@keyframes flashOn{from{opacity:.95}to{opacity:0}}
+
+.reveal{opacity:0;transform:translateY(46px) scale(.97);transition:opacity .7s ease,transform .7s cubic-bezier(.2,1,.3,1)}
+.reveal.vu{opacity:1;transform:none}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
+  .reveal{opacity:1;transform:none}
+}
+</style>
+</head>
+<body>
+
+<div class="cosmos"></div>
+<div class="etoiles"></div>
+<div class="rayons"></div>
+<div id="swarm"></div>
+<div id="flash"></div>
+
+<main>
+
+<!-- ================= HERO ================= -->
+<section id="hero">
+  <div class="wrap">
+    <div class="halo"><img src="img/jessy-face.jpg" alt="Jessy Esgun, le Messie du clutch, langue tirée et casque vissé sur la tête"></div>
+    <h1>Jessy Esgun</h1>
+    <p class="tagline">★ LE MESSIE DU CLUTCH 3v1 ★</p>
+    <p id="tape"></p>
+    <div class="badges">
+      <span class="badge">Radiant de cœur, Fer de rang</span>
+      <span class="badge">PPL 6 jours / 7</span>
+      <span class="badge">Astra shit certifié</span>
+      <span class="badge">Millionnaire en 2 semaines</span>
+      <span class="badge">Que des têtes</span>
+      <span class="badge">Aerial sans boost</span>
+      <span class="badge">Casque jamais enlevé</span>
+    </div>
+    <div class="actions">
+      <button class="btn" data-act="priere">🙏 Prier Jessy</button>
+      <button class="btn rouge" data-act="clutch">🔫 Clutch 3v1</button>
+      <button class="btn violet" data-act="astra">🌌 ASTRA SHIT</button>
+      <button class="btn cyan" data-act="rich">💰 Devenir riche</button>
+    </div>
+    <p id="compteur">prières enregistrées : <b>0</b> · têtes invoquées : <b>0</b></p>
+    <p class="fleche">▼</p>
+  </div>
+</section>
+
+<div class="marquee"><span>JESSY ESGUN ★ 3v1 CLUTCH ★ ASTRA SHIT ★ PUSH PULL LEGS ★ QUE DES TÊTES ★ ROCKET LEAGUE AERIAL ★ RICHESSE PASSIVE ★ JESSY ESGUN ★ 3v1 CLUTCH ★ ASTRA SHIT ★ PUSH PULL LEGS ★ QUE DES TÊTES ★</span></div>
+
+<!-- ================= ÉVANGILE ================= -->
+<section>
+  <div class="wrap reveal">
+    <h2>Le Livre des Clutchs</h2>
+    <p class="sous">Traduction œcuménique du .gg — Chapitre III, Ascent, mi-temps</p>
+
+    <div class="parchemin">
+      <b>Clutchs 3:1</b>
+      <p>Au commencement était le <em>spike</em>, et le spike était planté, et il n'y avait personne pour le défendre. Et Jessy dit : « laissez, je gère ». Et ses quatre coéquipiers, morts, ne dirent rien, car ils étaient morts.</p>
+    </div>
+    <div class="parchemin">
+      <b>Clutchs 3:4</b>
+      <p>Il descendit du site B avec 12 HP, un Sheriff et zéro utilitaire. Les anciens dirent : « c'est perdu ». Jessy répondit : « c'est perdu <strong>pour vous</strong> ».</p>
+    </div>
+    <div class="parchemin">
+      <b>Clutchs 3:9</b>
+      <p>Et il tira trois fois. Et il y eut trois têtes. Et il vit que cela était bon. Et le chat vocal se remplit de « ??????? » et cela fut compté comme une louange.</p>
+    </div>
+    <div class="parchemin">
+      <b>Clutchs 3:14</b>
+      <p>Alors l'Astra jeta son étoile au milieu du couloir, et le monde fut aspiré, et les ennemis dirent : « c'est quoi cette <em>astra shit</em> ». Et ce fut le premier miracle documenté.</p>
+    </div>
+    <div class="parchemin">
+      <b>Clutchs 3:21</b>
+      <p>Après la partie il fit 4 séries de développé couché, but 62&nbsp;g de protéines, ouvrit une SCI, et se coucha. Le septième jour il ne se reposa pas : le septième jour, c'est jour de jambes.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= STATS ================= -->
+<section>
+  <div class="wrap reveal">
+    <h2>Statistiques Divines</h2>
+    <p class="sous">Chiffres vérifiés par personne, contestés par tout le monde</p>
+    <div class="grille">
+      <div class="carte"><span class="val" data-cible="98" data-suffix="%">0</span><span class="lib">Headshot rate</span><p class="note">que des têtes, jamais le corps</p></div>
+      <div class="carte"><span class="val" data-cible="1" data-prefix="" data-suffix="v3">0</span><span class="lib">Format préféré</span><p class="note">le 5v5 c'est pour les assistés</p></div>
+      <div class="carte"><span class="val" data-cible="180" data-suffix=" kg">0</span><span class="lib">Développé couché</span><p class="note">à l'échauffement, sans ceinture</p></div>
+      <div class="carte"><span class="val" data-cible="6" data-suffix="/7">0</span><span class="lib">Split PPL</span><p class="note">le 7e jour : cardio spirituel</p></div>
+      <div class="carte"><span class="val" data-cible="412" data-suffix=" g">0</span><span class="lib">Protéines / jour</span><p class="note">dont 3 g de poulet, le reste en shaker</p></div>
+      <div class="carte"><span class="val" data-cible="9200" data-suffix="">0</span><span class="lib">MMR Rocket League</span><p class="note">en mode Rumble uniquement</p></div>
+      <div class="carte"><span class="val" data-cible="7" data-suffix=" €">0</span><span class="lib">Patrimoine réel</span><p class="note">mais 4 M€ de mindset</p></div>
+      <div class="carte"><span class="val" data-cible="0" data-suffix="">0</span><span class="lib">Fois où il a enlevé son casque</span><p class="note">le casque, c'est l'auréole moderne</p></div>
+    </div>
+  </div>
+</section>
+
+<div class="marquee rev"><span>« JE GÈRE » — JESSY, 12 HP, SANS UTILITAIRE ★ « ENCORE UNE ET J'ARRÊTE » — JESSY, 04H12 ★ « C'EST PAS DU LUCK C'EST DU GAME SENSE » ★ « JE SUIS PAS FER JE SUIS EN PHASE DE VOLUME » ★</span></div>
+
+<!-- ================= ASTRA ================= -->
+<section id="astra">
+  <div class="wrap reveal" style="text-align:center">
+    <span class="glitch" data-txt="ASTRA SHIT">ASTRA SHIT</span>
+    <p class="sous" style="margin-top:14px">Le sacrement du trou noir. Clique dans l'étoile. Assume les conséquences.</p>
+    <div class="trou" id="trou"><img src="img/jessy-head.png" alt="Tête de Jessy aspirée dans une singularité Astra"></div>
+    <div class="parchemin" style="text-align:left;max-width:720px;margin:0 auto">
+      <b>Doctrine de l'Astra</b>
+      <p>Jessy ne joue pas Astra pour l'utilité. Jessy joue Astra parce que placer une étoile au plafond, la laisser 40 secondes, puis oublier de l'activer, c'est un <em>acte de foi</em>. L'équipe ne comprend pas. L'équipe ne comprendra jamais. C'est le principe même de l'astra shit.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= MUSCU ================= -->
+<section>
+  <div class="wrap reveal">
+    <h2>Le Saint Split PPL</h2>
+    <p class="sous">Push · Pull · Legs · Push · Pull · Legs · Culpabilité</p>
+    <div class="split">
+      <div class="jour"><h4>Push</h4><ul><li>Développé couché 5×5</li><li>Dips lestés (sac à dos avec le PC)</li><li>Élévations latérales jusqu'à la nausée</li><li>Vérifier ses épaules dans le miroir ×47</li></ul></div>
+      <div class="jour"><h4>Pull</h4><ul><li>Tractions strictes, tempo divin</li><li>Rowing barre à la Yates</li><li>Curl biceps pendant le queue Valorant</li><li>Regretter le curl pendant la game</li></ul></div>
+      <div class="jour"><h4>Legs</h4><ul><li>Squat profond ATG</li><li>Soulevé de terre roumain</li><li>Presse à cuisses (les 4 plaques)</li><li>« je le fais demain » ×12 semaines</li></ul></div>
+      <div class="jour"><h4>Repos</h4><ul><li>Ranked jusqu'à 5h du matin</li><li>Shaker à 2 h en position allongée</li><li>Lire 3 pages d'un livre de finance</li><li>Compter ça comme du repos actif</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ROCKET LEAGUE ================= -->
+<section>
+  <div class="wrap reveal">
+    <h2>Rocket League : l'Ascension</h2>
+    <p class="sous">Ceiling shot, double touch, et 0 boost — comme la vie</p>
+    <div class="piste"><div class="balle"></div><div class="boost">BOOST : 0% · CONFIANCE : 340%</div></div>
+    <div class="parchemin">
+      <b>Le Miracle du Plafond</b>
+      <p>On raconte qu'un soir de Diamant 2, Jessy est monté au plafond, a lâché la balle, est redescendu en flip reset, a marqué, puis a écrit « ez » dans le chat. Il a ensuite perdu les 11 matchs suivants. Les deux faits sont canoniques.</p>
+    </div>
+    <div class="parchemin">
+      <b>Épître aux Coéquipiers</b>
+      <p>« Ne dis jamais <em>What a save!</em> trois fois de suite. Car celui qui spamme le save, spamme sa propre chute. » — Jessy, en demi-finale de tournoi entre potes.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= RICHESSE ================= -->
+<section>
+  <div class="wrap reveal">
+    <h2>Comment Devenir Riche</h2>
+    <p class="sous">Les 9 commandements financiers de Jessy Esgun (non homologués AMF, ni par personne)</p>
+    <ol class="comm">
+      <li><strong>Lève-toi à 4h27.</strong> Pas 4h30. 4h30 c'est pour les gens qui dorment.</li>
+      <li><strong>Douche froide.</strong> Ta douche doit être plus froide que le regard de ton banquier.</li>
+      <li><strong>Ne travaille pas pour l'argent.</strong> Fais travailler l'argent. Puis constate que tu n'as pas d'argent, donc personne ne travaille.</li>
+      <li><strong>Achète des skins Valorant.</strong> C'est de l'investissement culturel. Le Prime Vandal, c'est un actif tangible.</li>
+      <li><strong>Diversifie.</strong> 40 % crypto, 40 % coffre Rocket League, 20 % whey.</li>
+      <li><strong>Le mindset avant le capital.</strong> Tu es déjà millionnaire, tu es juste en retard de virement.</li>
+      <li><strong>Vends une formation.</strong> Sur comment devenir riche. C'est ça, la vraie boucle infinie.</li>
+      <li><strong>Ne demande jamais de conseils.</strong> Sauf à un mec torse nu avec un casque gaming — lui, il sait.</li>
+      <li><strong>Reste humble.</strong> Puis mets un halo doré sur ta propre page web.</li>
+    </ol>
+    <div class="actions"><button class="btn cyan" data-act="oracle">🔮 Recevoir une prophétie</button></div>
+    <div id="oracle">Clique pour recevoir la parole de Jessy.</div>
+  </div>
+</section>
+
+<!-- ================= APÔTRES ================= -->
+<section>
+  <div class="wrap reveal">
+    <h2>Les Douze Apôtres du Lobby</h2>
+    <p class="sous">Survole-les. Ils bougent. Ils te jugent.</p>
+    <div class="grille" id="apotres"></div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <img src="img/jessy-head.png" alt="Tête de Jessy en médaillon">
+  <p><strong>JESSY ESGUN</strong> — Messie du clutch, prêtre de la fonte, gourou du portefeuille vide.</p>
+  <p>Aucune tête n'a été maltraitée pendant la fabrication de cette page. Toutes ont été touchées.</p>
+  <p>Site 100 % vanilla, 0 % framework, 412 g de protéines. · <a href="../">retour au sanctuaire</a></p>
+  <p style="opacity:.5;margin-top:10px">Ceci est une page humoristique entre amis. Ne suivez surtout aucun conseil financier ci-dessus.</p>
+</footer>
+
+<script>
+/* =========================================================
+   1. SWARM DE TÊTES QUI VADROUILLENT
+   ========================================================= */
+const swarm = document.getElementById('swarm');
+const heads = [];
+const rnd = (a,b)=>a+Math.random()*(b-a);
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function spawnHead(opts={}){
+  const el = document.createElement('div');
+  el.className = 'tete' + (opts.cls ? ' '+opts.cls : '');
+  swarm.appendChild(el);
+  const size = opts.cls === 'mini' ? 34 : opts.cls === 'mega' ? 120 : 64;
+  const h = {
+    el, size,
+    x: opts.x ?? rnd(0, innerWidth - size),
+    y: opts.y ?? rnd(0, innerHeight - size),
+    vx: opts.vx ?? (rnd(-1.6, 1.6) || .8),
+    vy: opts.vy ?? (rnd(-1.6, 1.6) || .8),
+    r: rnd(0, 360),
+    vr: rnd(-2.6, 2.6),
+    life: opts.life ?? Infinity
+  };
+  heads.push(h);
+  return h;
+}
+
+function tick(){
+  for (let i = heads.length - 1; i >= 0; i--){
+    const h = heads[i];
+    h.x += h.vx; h.y += h.vy; h.r += h.vr;
+    // rebond sur les bords, comme un DVD screensaver mais avec sa tête
+    if (h.x < 0){ h.x = 0; h.vx *= -1; }
+    if (h.x > innerWidth - h.size){ h.x = innerWidth - h.size; h.vx *= -1; }
+    if (h.y < 0){ h.y = 0; h.vy *= -1; }
+    if (h.y > innerHeight - h.size){ h.y = innerHeight - h.size; h.vy *= -1; }
+    h.el.style.transform = `translate(${h.x}px,${h.y}px) rotate(${h.r}deg)`;
+    if (h.life !== Infinity && --h.life <= 0){ h.el.remove(); heads.splice(i,1); }
+  }
+  requestAnimationFrame(tick);
+}
+
+const baseCount = innerWidth < 700 ? 6 : 14;
+for (let i = 0; i < baseCount; i++) spawnHead({ cls: i % 3 === 0 ? 'mini' : '' });
+if (!reduced) tick();
+
+/* =========================================================
+   2. TRAÎNÉE DE TÊTES AU CURSEUR
+   ========================================================= */
+let lastTrace = 0;
+addEventListener('pointermove', e => {
+  const now = performance.now();
+  if (now - lastTrace < 90 || reduced) return;
+  lastTrace = now;
+  const t = document.createElement('div');
+  t.className = 'trace';
+  t.style.left = (e.clientX - 19) + 'px';
+  t.style.top  = (e.clientY - 19) + 'px';
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 900);
+});
+
+/* =========================================================
+   3. MACHINE À ÉCRIRE
+   ========================================================= */
+const phrases = [
+  '> il reste 3 ennemis. il reste 1 Jessy. c\'est équilibré.',
+  '> "j\'ai pas de crosshair placement j\'ai de la FOI"',
+  '> statut : torse nu, casque vissé, spike planté',
+  '> chargement du mindset millionnaire... 7 €',
+  '> jour de jambes reporté à demain (x412)',
+  '> l\'étoile Astra est posée. personne ne sait pourquoi.'
+];
+const tape = document.getElementById('tape');
+let pi = 0, ci = 0, del = false;
+(function type(){
+  const txt = phrases[pi];
+  tape.textContent = del ? txt.slice(0, --ci) : txt.slice(0, ++ci);
+  let d = del ? 26 : 42;
+  if (!del && ci === txt.length){ del = true; d = 1800; }
+  else if (del && ci === 0){ del = false; pi = (pi+1) % phrases.length; d = 320; }
+  setTimeout(type, d);
+})();
+
+/* =========================================================
+   4. COMPTEURS ANIMÉS + REVEAL AU SCROLL
+   ========================================================= */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(en => {
+    if (!en.isIntersecting) return;
+    en.target.classList.add('vu');
+    en.target.querySelectorAll('.val').forEach(v => {
+      if (v.dataset.done) return;
+      v.dataset.done = 1;
+      const cible = +v.dataset.cible, sfx = v.dataset.suffix || '';
+      let n = 0;
+      const step = Math.max(1, cible / 45);
+      (function up(){
+        n = Math.min(cible, n + step);
+        v.textContent = Math.round(n) + sfx;
+        if (n < cible) requestAnimationFrame(up);
+      })();
+    });
+    io.unobserve(en.target);
+  });
+}, { threshold: .18 });
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+/* =========================================================
+   5. LES 12 APÔTRES
+   ========================================================= */
+const apotres = [
+  ['Jessy le Duelliste','entry frag, meurt en 4 s, blâme le smoke'],
+  ['Jessy le Sentinelle','pose 2 murs, part en rotation, oublie le site'],
+  ['Jessy le Comptable','calcule son eco pendant 40 s, achète rien'],
+  ['Jessy le Bodybuilder','fait des pompes entre deux rounds'],
+  ['Jessy le Trader','a acheté au plus haut, en toute sérénité'],
+  ['Jessy le Boost','plein boost, zéro idée'],
+  ['Jessy le Coach','« calmez-vous » en criant'],
+  ['Jessy le Silencieux','micro coupé, 34 kills'],
+  ['Jessy le Prophète','« on va perdre » (round 1)'],
+  ['Jessy le Whey','shaker vide, cœur plein'],
+  ['Jessy l\'Astra','l\'étoile est encore au plafond'],
+  ['Jessy le Clutch','le vrai. l\'unique. 3v1.']
+];
+document.getElementById('apotres').innerHTML = apotres.map(([n,d]) => `
+  <div class="carte">
+    <img src="img/jessy-head-sm.png" alt="" style="width:70px;margin:0 auto 10px;border-radius:50%;border:2px solid var(--or)">
+    <span class="lib" style="font-size:14px;letter-spacing:.05em;opacity:1;color:var(--or)">${n}</span>
+    <p class="note" style="opacity:.7">${d}</p>
+  </div>`).join('');
+
+/* =========================================================
+   6. SON : petit bip WebAudio (pas de fichier externe)
+   ========================================================= */
+let ac;
+function bip(freq = 660, dur = .12, type = 'square'){
+  try{
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(.06, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + dur);
+    o.connect(g).connect(ac.destination);
+    o.start(); o.stop(ac.currentTime + dur);
+  }catch(e){/* silence divin */}
+}
+
+/* =========================================================
+   7. ACTIONS / BOUTONS
+   ========================================================= */
+let prieres = 0, invoquees = baseCount;
+const cpt = document.getElementById('compteur');
+function majCompteur(){
+  cpt.innerHTML = `prières enregistrées : <b>${prieres}</b> · têtes invoquées : <b>${invoquees}</b>`;
+}
+function flash(){
+  const f = document.getElementById('flash');
+  f.classList.remove('on'); void f.offsetWidth; f.classList.add('on');
+}
+function secoue(ms = 500){
+  document.body.classList.add('secousse');
+  setTimeout(() => document.body.classList.remove('secousse'), ms);
+}
+function pluie(n, cls){
+  for (let i = 0; i < n; i++){
+    spawnHead({ cls, x: rnd(0, innerWidth-80), y: rnd(0, innerHeight-80),
+                vx: rnd(-5,5), vy: rnd(-5,5), life: 60*14 });
+  }
+  invoquees += n; majCompteur();
+}
+
+const prophEties = [
+  'Tu monteras Immortel le jour où tu arrêteras de dire « c\'est le serveur ».',
+  'Un shaker mal fermé t\'attend cette semaine. Prépare-toi.',
+  'Ton prochain 1v3 sera gagné. Le replay ne sera pas sauvegardé. C\'est la volonté de Jessy.',
+  'Tu feras jour de jambes. Pas cette semaine. Mais tu le feras.',
+  'Ta plus grosse perte financière viendra d\'un coffre à 3,50 €.',
+  'Un inconnu te dira « nice shot ». Tu y penseras encore dans 6 ans.',
+  'Ton crosshair est trop grand. Ton ego aussi. Réduis les deux de 2 pixels.',
+  'L\'étoile Astra que tu as posée en 2021 est toujours là. Elle t\'attend.',
+  'Tu deviendras riche. En amis. Ce qui, financièrement, ne compte pas.',
+  'Tu diras « dernière game » 4 fois. La 5e sera vraiment la dernière. À 6h14.'
+];
+
+document.addEventListener('click', e => {
+  const btn = e.target.closest('[data-act]');
+  if (!btn) return;
+  const act = btn.dataset.act;
+
+  if (act === 'priere'){
+    prieres++; majCompteur(); bip(880, .1); pluie(3, 'mini');
+    btn.textContent = ['🙏 Prier Jessy','🙏 Encore','🙏 ENCORE','🙏 il a entendu','🙏 arrête','🙏 stp'][Math.min(prieres,5)];
+  }
+
+  if (act === 'clutch'){
+    secoue(); flash(); bip(180,.08,'sawtooth');
+    setTimeout(()=>bip(240,.08,'sawtooth'),110);
+    setTimeout(()=>bip(330,.22,'sawtooth'),220);
+    pluie(18, 'mini');
+    spawnHead({ cls:'mega', vx: rnd(-3,3), vy: rnd(-3,3), life: 60*10 });
+    invoquees++; majCompteur();
+  }
+
+  if (act === 'astra'){
+    document.body.classList.add('rave'); bip(90,.5,'sine');
+    pluie(10);
+    setTimeout(() => document.body.classList.remove('rave'), 1400);
+  }
+
+  if (act === 'rich'){
+    bip(1200,.06); setTimeout(()=>bip(1600,.09),80);
+    const cash = ['💸','🤑','💰','🪙','💵'];
+    for (let i = 0; i < 34; i++){
+      const s = document.createElement('div');
+      s.textContent = cash[i % cash.length];
+      s.style.cssText = `position:fixed;z-index:30;pointer-events:none;font-size:${rnd(18,44)}px;
+        left:${rnd(0,100)}vw;top:-60px;transition:transform ${rnd(2,4)}s linear,opacity 3.6s`;
+      document.body.appendChild(s);
+      requestAnimationFrame(() => {
+        s.style.transform = `translateY(${innerHeight+120}px) rotate(${rnd(-540,540)}deg)`;
+        s.style.opacity = '0';
+      });
+      setTimeout(() => s.remove(), 4200);
+    }
+    pluie(6);
+  }
+
+  if (act === 'oracle'){
+    const o = document.getElementById('oracle');
+    o.style.opacity = 0;
+    bip(520,.14,'triangle');
+    setTimeout(() => {
+      o.textContent = '« ' + prophEties[Math.floor(Math.random()*prophEties.length)] + ' »';
+      o.style.transition = 'opacity .4s'; o.style.opacity = 1;
+    }, 220);
+  }
+});
+
+/* Le trou noir Astra aspire tout */
+document.getElementById('trou').addEventListener('click', () => {
+  bip(70,.7,'sine'); secoue(700);
+  heads.forEach(h => { h.vx *= 2.2; h.vy *= 2.2; });
+  setTimeout(() => heads.forEach(h => { h.vx /= 2.2; h.vy /= 2.2; }), 2600);
+  pluie(12, 'mini');
+});
+
+/* Konami-lite : tape "ESGUN" pour l'ascension */
+let buf = '';
+addEventListener('keydown', e => {
+  buf = (buf + e.key).toLowerCase().slice(-5);
+  if (buf === 'esgun'){
+    document.body.classList.add('rave'); flash();
+    pluie(60, 'mini'); pluie(6, 'mega');
+    [220,330,440,550,660].forEach((f,i) => setTimeout(() => bip(f,.14,'square'), i*130));
+    setTimeout(() => document.body.classList.remove('rave'), 3000);
+  }
+});
+
+majCompteur();
+</script>
+</body>
+</html>
