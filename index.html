@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<!--
+  Homepage — répertoire des projets publics récents (hostés sur Vercel)
+  + expériences locales hébergées sur ce site GitHub Pages.
+-->
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>yluom — Projets</title>
+  <meta name="description" content="Répertoire des projets publics de yluom : tennis de table, sites vitrines, expériences web.">
+  <style>
+    :root {
+      --bg: #0f1115;
+      --card: #181b22;
+      --card-hover: #1f232c;
+      --text: #e8eaed;
+      --muted: #9aa0a8;
+      --accent: #5eead4;
+      --border: #262a33;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      min-height: 100vh;
+      padding: 3rem 1.5rem;
+    }
+    main { max-width: 960px; margin: 0 auto; }
+    header { margin-bottom: 2.5rem; }
+    h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; }
+    header p { color: var(--muted); margin-top: 0.4rem; }
+    h2 {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      margin: 2.5rem 0 1rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+    .card {
+      display: block;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.1rem 1.25rem;
+      text-decoration: none;
+      color: inherit;
+      transition: background 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+    }
+    .card:hover {
+      background: var(--card-hover);
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+    .card h3 { font-size: 1.05rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .card .url { font-size: 0.78rem; color: var(--accent); word-break: break-all; }
+    .card p { font-size: 0.88rem; color: var(--muted); margin-top: 0.5rem; }
+    .tag {
+      display: inline-block;
+      font-size: 0.68rem;
+      padding: 0.1rem 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      color: var(--muted);
+      margin-top: 0.6rem;
+      margin-right: 0.3rem;
+    }
+    footer {
+      margin-top: 3.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.85rem;
+      text-align: center;
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>yluom</h1>
+      <p>Projets récents &amp; expériences web</p>
+    </header>
+
+    <h2>Tennis de table</h2>
+    <div class="grid">
+      <a class="card" href="https://pinghub-mu.vercel.app" target="_blank" rel="noopener">
+        <h3>PingHub</h3>
+        <span class="url">pinghub-mu.vercel.app</span>
+        <p>Résultats par équipe de tennis de table : matchs, perfs et statistiques en un coup d'œil.</p>
+        <span class="tag">Vercel</span><span class="tag">TypeScript</span>
+      </a>
+      <a class="card" href="https://ping-gg.vercel.app" target="_blank" rel="noopener">
+        <h3>PingHub.app — Live Scores</h3>
+        <span class="url">ping-gg.vercel.app</span>
+        <p>Scores en direct, résultats et calendriers du tennis de table pro : WTT, Pro A, Bundesliga.</p>
+        <span class="tag">Vercel</span><span class="tag">JavaScript</span>
+      </a>
+      <a class="card" href="https://pingdico.vercel.app" target="_blank" rel="noopener">
+        <h3>PingDico</h3>
+        <span class="url">pingdico.vercel.app</span>
+        <p>Le dico qui gratte : dictionnaire en ligne du jargon pongiste français — carottes, grattes et topspins.</p>
+        <span class="tag">Vercel</span><span class="tag">HTML</span>
+      </a>
+    </div>
+
+    <h2>Sites vitrines</h2>
+    <div class="grid">
+      <a class="card" href="https://sousloeildeflo.vercel.app" target="_blank" rel="noopener">
+        <h3>Sous l'œil de Flo</h3>
+        <span class="url">sousloeildeflo.vercel.app</span>
+        <p>Photographe à Samatan (Gers) — mariage, famille, grossesse, dans tout le Sud-Ouest.</p>
+        <span class="tag">Vercel</span><span class="tag">Astro</span>
+      </a>
+      <a class="card" href="https://thomas-sellier.vercel.app" target="_blank" rel="noopener">
+        <h3>Thomas Sellier</h3>
+        <span class="url">thomas-sellier.vercel.app</span>
+        <p>Artisan plombier-chauffagiste à Empeaux (31) : dépannage, installation, entretien.</p>
+        <span class="tag">Vercel</span><span class="tag">HTML</span>
+      </a>
+      <a class="card" href="https://thomas-gerard-taxi.vercel.app" target="_blank" rel="noopener">
+        <h3>Thomas Gérard Taxi</h3>
+        <span class="url">thomas-gerard-taxi.vercel.app</span>
+        <p>Taxi conventionné CPAM, Toulouse &amp; Haute-Garonne — transport médical 7j/7.</p>
+        <span class="tag">Vercel</span><span class="tag">TypeScript</span>
+      </a>
+      <a class="card" href="https://studiolfq.vercel.app" target="_blank" rel="noopener">
+        <h3>Studio La Franqui</h3>
+        <span class="url">studiolfq.vercel.app</span>
+        <p>Location vacances : studio vue mer à 50 m de la plage de La Franqui.</p>
+        <span class="tag">Vercel</span><span class="tag">TypeScript</span>
+      </a>
+    </div>
+
+    <h2>Expériences</h2>
+    <div class="grid">
+      <a class="card" href="https://beatflux.vercel.app" target="_blank" rel="noopener">
+        <h3>BeatFlux</h3>
+        <span class="url">beatflux.vercel.app</span>
+        <p>Beatbox dans ton micro et regarde une nébuleuse de particules audio-réactive éclore, en direct dans le navigateur.</p>
+        <span class="tag">Vercel</span><span class="tag">TypeScript</span>
+      </a>
+      <a class="card" href="https://misc-lmo.vercel.app" target="_blank" rel="noopener">
+        <h3>Sandbox</h3>
+        <span class="url">misc-lmo.vercel.app</span>
+        <p>Bac à sable : outils, POC et tests divers.</p>
+        <span class="tag">Vercel</span><span class="tag">TypeScript</span>
+      </a>
+      <a class="card" href="/paulschou/">
+        <h3>Paulschou Converter</h3>
+        <span class="url">/paulschou/</span>
+        <p>Convertisseur de formats (base64, hex, binaire…) en HTML/JS pur, hébergé sur ce site.</p>
+        <span class="tag">GitHub Pages</span>
+      </a>
+      <a class="card" href="/jessy/">
+        <h3>Jessy Esgun</h3>
+        <span class="url">/jessy/</span>
+        <p>Page hommage à Jessy Esgun, hébergée sur ce site.</p>
+        <span class="tag">GitHub Pages</span>
+      </a>
+    </div>
+
+    <footer>
+      <a href="https://github.com/yluom" target="_blank" rel="noopener">github.com/yluom</a>
+    </footer>
+  </main>
+</body>
+</html>
