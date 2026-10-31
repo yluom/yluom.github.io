@@ -320,8 +320,21 @@
     const sel = active && active.tagName === 'TEXTAREA'
       ? { el: active, start: active.selectionStart, end: active.selectionEnd, dir: active.selectionDirection }
       : null;
+    const source = panels.find(([el, cls]) => /\bis-source\b/.test(cls));
     return () => {
       fields.forEach(([el, v, css, ph]) => { el.value = v; el.style.cssText = css; el.placeholder = ph; });
+      // Resynchronise l'état interne de l'app (champ source, boutons Copier,
+      // avertissements) via ses propres événements : un "input" sur le champ
+      // source recalcule les autres champs à l'identique ; sans source, un
+      // "blur" la remet à zéro.
+      const srcField = source && source[0].querySelector('textarea');
+      if (srcField) srcField.dispatchEvent(new Event('input', { bubbles: true }));
+      else {
+        const any = fields[0] && fields[0][0];
+        if (any) any.dispatchEvent(new Event('blur'));
+        document.dispatchEvent(new Event('input'));
+      }
+      fields.forEach(([el, v]) => { el.value = v; });
       panels.forEach(([el, cls]) => { el.className = cls; });
       if (sel && document.activeElement === sel.el) sel.el.setSelectionRange(sel.start, sel.end, sel.dir);
     };
@@ -507,11 +520,16 @@
   // =====================================================================
   const MSG = 'coucou freulere';
   const FIELDS = { text: 'text-input', dec: 'decimal-input', bin: 'binary-input', hex: 'hex-input', b64: 'base64-input' };
+  // Séparateur choisi dans l'app (espace ou rien) pour dec / bin / hex.
+  const sepFor = f => {
+    const el = document.querySelector(`input[data-sep-for~="${f}"]:checked`);
+    return el && el.value === 'none' ? '' : ' ';
+  };
   const ENC = {
     text: s => s,
-    dec: s => [...s].map(c => c.charCodeAt(0).toString().padStart(3, '0')).join(' '),
-    bin: s => [...s].map(c => c.charCodeAt(0).toString(2).padStart(8, '0')).join(' '),
-    hex: s => [...s].map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join(' '),
+    dec: s => [...s].map(c => c.charCodeAt(0).toString().padStart(3, '0')).join(sepFor('dec')),
+    bin: s => [...s].map(c => c.charCodeAt(0).toString(2).padStart(8, '0')).join(sepFor('bin')),
+    hex: s => [...s].map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join(sepFor('hex')),
     b64: s => btoa(unescape(encodeURIComponent(s))),
   };
   const ALPHABET = {
