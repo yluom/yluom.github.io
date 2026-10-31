@@ -151,6 +151,30 @@ async function test(file) {
 
   assert.deepStrictEqual(errors, [], 'page errors');
   await browser.close();
+
+  await t('setting survives closing and reopening the browser', async () => {
+    const os = require('os');
+    const fs = require('fs');
+    const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'paulschou-profile-'));
+    try {
+      let c = await chromium.launchPersistentContext(profile);
+      let p = await c.newPage();
+      await p.goto(url);
+      await p.evaluate(() => localStorage.clear());
+      await p.reload();
+      await setMode(p, 'hex', 'none');
+      await c.close(); // browser fully closed
+      c = await chromium.launchPersistentContext(profile);
+      p = await c.newPage();
+      await p.goto(url);
+      assert.strictEqual(await getMode(p, 'hex'), 'none');
+      await p.fill(IDS.text, 'Hi');
+      assert.strictEqual(await val(p, 'hex'), '4869');
+      await c.close();
+    } finally {
+      fs.rmSync(profile, { recursive: true, force: true });
+    }
+  });
   return ok;
 }
 

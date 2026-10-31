@@ -1,7 +1,7 @@
 // Golden-master regression test: run the same scenarios on the baseline page and
 // on candidate pages (default settings), diff every field value + panel state.
 // usage: node regression.js baseline.html candidate1.html [candidate2.html ...]
-// baseline: git show main:paulschou/index.html > /tmp/baseline.html
+// baseline = page before issue #3: git show 148f022:paulschou/index.html > /tmp/baseline.html
 const { chromium } = require('playwright');
 const path = require('path');
 
