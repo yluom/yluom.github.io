@@ -149,6 +149,135 @@ async function test(file) {
     await p3.close();
   });
 
+  const msg = f => page.locator(`[data-msg-for="${f}"]`);
+  const count = f => page.textContent(`[data-count-for="${f}"]`);
+  const panelHas = (f, cls) => page.locator(`.panel[data-format="${f}"]`).getAttribute('class').then(c => c.split(' ').includes(cls));
+
+  await t('invalid input: message, aria-invalid, other fields greyed out', async () => {
+    await page.reload();
+    await page.fill(IDS.hex, '48 6g zz');
+    assert.ok(await msg('hex').isVisible());
+    assert.ok((await msg('hex').getAttribute('class')).includes('is-error'));
+    const m = await msg('hex').textContent();
+    assert.ok(m.includes('"g" at position 5') && m.includes('2 more invalid characters'), m);
+    assert.strictEqual(await page.getAttribute(IDS.hex, 'aria-invalid'), 'true');
+    for (const f of ['text', 'dec', 'bin', 'b64']) assert.ok(await panelHas(f, 'is-stale'), f);
+    assert.ok(!(await panelHas('hex', 'is-stale')));
+    await page.fill(IDS.hex, '48 65');
+    assert.ok(!(await msg('hex').isVisible()));
+    assert.strictEqual(await page.getAttribute(IDS.hex, 'aria-invalid'), null);
+    for (const f of Object.keys(IDS)) assert.ok(!(await panelHas(f, 'is-stale')), f);
+  });
+
+  await t('message names invisible chars by code point and counts emoji as one position', async () => {
+    await page.reload();
+    await page.fill(IDS.dec, '72​');
+    assert.ok((await msg('dec').textContent()).startsWith('U+200B at position 3'));
+    await page.fill(IDS.hex, '4\u{1F600}');
+    assert.ok((await msg('hex').textContent()).startsWith('"\u{1F600}" at position 2'));
+  });
+
+  await t('red border removed when the field is overwritten with a valid result', async () => {
+    await page.reload();
+    await page.fill(IDS.hex, 'zz');
+    await page.fill(IDS.text, 'Az');
+    assert.ok(!(await panelHas('hex', 'is-invalid')));
+    assert.strictEqual(await page.getAttribute(IDS.hex, 'aria-invalid'), null);
+    assert.ok(!(await msg('hex').isVisible()));
+  });
+
+  await t('hints for partly ignored input, only on the field being typed in', async () => {
+    const cases = [
+      ['hex', '486', 'The last digit is ignored'],
+      ['bin', '0100100', 'The last 7 bits are ignored'],
+      ['dec', '0721011', 'The last digit is ignored'],
+      ['dec', '70000', '70000 is above 65535'],
+      ['b64', 'A', 'This Base64 is incomplete'],
+    ];
+    for (const [f, v, want] of cases) {
+      await page.reload();
+      await page.fill(IDS[f], v);
+      const m = await msg(f).textContent();
+      assert.ok(m.startsWith(want), `${f} ${v}: ${m}`);
+      assert.ok(!(await msg(f).getAttribute('class')).includes('is-error'));
+      await page.fill(IDS.text, 'x');
+      assert.ok(!(await msg(f).isVisible()), f + ' hidden after typing elsewhere');
+    }
+    await page.reload();
+    await page.fill(IDS.hex, '4865');
+    assert.ok(!(await msg('hex').isVisible()));
+  });
+
+  await t('size counters', async () => {
+    await page.reload();
+    for (const f of ['dec', 'bin', 'hex']) await setMode(page, f, 'space');
+    for (const f of Object.keys(IDS)) assert.strictEqual(await count(f), '', f);
+    await page.fill(IDS.text, 'A');
+    assert.strictEqual(await count('text'), '1 char · 1 byte UTF-8');
+    await page.fill(IDS.text, 'Hi');
+    assert.strictEqual(await count('dec'), '2 codes · 7 chars');
+    assert.strictEqual(await count('bin'), '2 bytes · 17 chars');
+    assert.strictEqual(await count('hex'), '2 bytes · 5 chars');
+    assert.strictEqual(await count('b64'), '4 chars · 2 bytes');
+    await page.fill(IDS.text, 'héllo\u{1F600}');
+    assert.strictEqual(await count('text'), '6 chars · 10 bytes UTF-8');
+    await page.fill(IDS.hex, 'zz');
+    assert.strictEqual(await count('hex'), '2 chars');
+  });
+
+  await t('Clear all, Undo clear, undo dropped on typing or after 5 s', async () => {
+    await page.reload();
+    const btn = page.locator('#clear-all');
+    assert.ok(await btn.isDisabled());
+    await page.fill(IDS.text, 'Hi');
+    await page.fill(IDS.hex, '48 zz');
+    await btn.click();
+    for (const f of Object.keys(IDS)) {
+      assert.strictEqual(await val(page, f), '', f);
+      assert.ok(!(await panelHas(f, 'is-invalid')) && !(await panelHas(f, 'is-source')), f);
+      assert.ok(await page.locator(`[data-copy="${f}"]`).isDisabled(), f);
+    }
+    assert.strictEqual((await btn.textContent()).trim(), 'Undo clear');
+    await btn.click();
+    assert.strictEqual(await val(page, 'hex'), '48 zz');
+    assert.strictEqual(await val(page, 'text'), 'Hi');
+    assert.ok(await panelHas('hex', 'is-invalid') && await panelHas('hex', 'is-source'));
+    assert.ok(await msg('hex').isVisible());
+    assert.strictEqual((await btn.textContent()).trim(), 'Clear all');
+    await btn.click();
+    await page.fill(IDS.text, 'new');
+    assert.strictEqual((await btn.textContent()).trim(), 'Clear all');
+    assert.strictEqual(await val(page, 'hex'), '6e 65 77');
+    await btn.click();
+    await page.waitForTimeout(5300);
+    assert.strictEqual((await btn.textContent()).trim(), 'Clear all');
+    assert.ok(await btn.isDisabled());
+  });
+
+  await t('fields have accessible names', async () => {
+    for (const name of ['TEXT', 'ASCII Decimal', 'Binary', 'Hexadecimal', 'Base64']) {
+      assert.strictEqual(await page.getByRole('textbox', { name, exact: true }).count(), 1, name);
+    }
+  });
+
+  await t('dark mode follows the system, light mode unchanged', async () => {
+    const colors = async scheme => {
+      const c = await browser.newContext({ colorScheme: scheme });
+      const p = await c.newPage();
+      await p.goto(url);
+      const r = await p.evaluate(() => ({
+        body: getComputedStyle(document.body).backgroundColor,
+        panel: getComputedStyle(document.querySelector('.panel[data-format="hex"]')).backgroundColor,
+        text: getComputedStyle(document.body).color,
+      }));
+      await c.close();
+      return r;
+    };
+    assert.deepStrictEqual(await colors('light'), { body: 'rgb(245, 245, 245)', panel: 'rgb(255, 255, 255)', text: 'rgb(51, 51, 51)' });
+    const dark = await colors('dark');
+    assert.deepStrictEqual(dark, { body: 'rgb(22, 23, 27)', panel: 'rgb(31, 32, 38)', text: 'rgb(228, 228, 232)' });
+  });
+
   assert.deepStrictEqual(errors, [], 'page errors');
   await browser.close();
 

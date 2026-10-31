@@ -1,7 +1,7 @@
 // Golden-master regression test: run the same scenarios on the baseline page and
 // on candidate pages (default settings), diff every field value + panel state.
 // usage: node regression.js baseline.html candidate1.html [candidate2.html ...]
-// baseline = page before issue #3: git show 148f022:paulschou/index.html > /tmp/baseline.html
+// baseline = page before the change: git show main:paulschou/index.html > /tmp/baseline.html
 const { chromium } = require('playwright');
 const path = require('path');
 
@@ -89,11 +89,21 @@ async function run(file, cases) {
   let failed = false;
   for (const c of cands) {
     const got = await run(c, all);
+    // Intended changes:
+    // 1. Decimal source with 6+ digits in a row is read as 3-digit groups.
     const all6 = k => ref[k].dec.src && /\d{6,}/.test(ref[k].dec.v);
+    // 2. A field overwritten with a valid result is no longer flagged invalid
+    //    (same values, only `inv` goes true -> false on non-source fields).
+    const clearedInvalid = k => Object.keys(ref[k]).every(f => {
+      const r = ref[k][f], g = got[k][f];
+      return r.v === g.v && r.src === g.src && (r.inv === g.inv || (r.inv && !g.inv && !g.src));
+    });
+    const expected = k => all6(k) || clearedInvalid(k);
     const diffs = Object.keys(ref).filter(k => JSON.stringify(ref[k]) !== JSON.stringify(got[k]));
-    const unexpected = diffs.filter(k => !all6(k));
+    const unexpected = diffs.filter(k => !expected(k));
     console.log(`\n== ${path.basename(c)}: ${Object.keys(ref).length} snapshots, ${diffs.length} diffs, ${unexpected.length} unexpected`);
     unexpected.forEach(k => { failed = true; console.log('  DIFF', k, '\n    base', JSON.stringify(ref[k]), '\n    new ', JSON.stringify(got[k])); });
+    diffs.filter(k => !all6(k) && clearedInvalid(k)).forEach(k => console.log(`  expected: ${k}: red border removed from a field that now holds a valid result`));
     diffs.filter(all6).forEach(k => console.log(`  expected: ${k}: text ${JSON.stringify(ref[k].text.v)} -> ${JSON.stringify(got[k].text.v)}`));
     const gotI = await run(c, INTENDED);
     console.log('  intended changes (decimal tokens >= 6 digits):');
