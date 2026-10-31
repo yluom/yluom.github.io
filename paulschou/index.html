@@ -2,7 +2,8 @@
 <!--
   Paulschou Converter: live ASCII / Decimal / Binary / Hex / Base64 converter.
   Copy buttons on every panel; one output separator setting (space or none) for
-  Decimal, Binary and Hex, saved in localStorage (issue #3). Tests: tests/README.md
+  Decimal, Binary and Hex, saved in localStorage (issue #3). Error messages, size
+  counters, Clear all with undo, dark mode. Tests: tests/README.md
 -->
 <html lang="en">
 <head>
@@ -35,6 +36,41 @@
             --color-bin: #3a9a5b;
             --color-hex: #7c5bad;
             --color-b64: #2a9d8f;
+
+            /* State colors */
+            --on-color: #fff;       /* text on a format color */
+            --focus-bg: #fff;
+            --error: #e53e3e;
+            --error-bg: #fff5f5;
+            --warn: #b7791f;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                color-scheme: dark;
+                --bg: #16171b;
+                --panel-bg: #1f2026;
+                --input-bg: #18191e;
+                --border: #30323a;
+                --border-hover: #474a55;
+                --text: #e4e4e8;
+                --text-light: #b0b1ba;
+                --text-muted: #80828d;
+                --shadow: 0 2px 8px rgba(0,0,0,0.35);
+                --shadow-hover: 0 4px 16px rgba(0,0,0,0.5);
+
+                --color-text: #72aed3;
+                --color-dec: #e2a64a;
+                --color-bin: #5cc581;
+                --color-hex: #ad92dd;
+                --color-b64: #4cc4b4;
+
+                --on-color: #121317;
+                --focus-bg: #1b1c21;
+                --error: #f07070;
+                --error-bg: #2b1b1d;
+                --warn: #e2a64a;
+            }
         }
 
         * {
@@ -115,12 +151,12 @@
         /* Active source state */
         .panel.is-source {
             border-left-color: var(--panel-color);
-            background: linear-gradient(90deg, color-mix(in srgb, var(--panel-color) 4%, white) 0%, white 100%);
+            background: linear-gradient(90deg, color-mix(in srgb, var(--panel-color) 4%, var(--panel-bg)) 0%, var(--panel-bg) 100%);
         }
 
         .panel.is-source .panel-badge {
             background: var(--panel-color);
-            color: white;
+            color: var(--on-color);
         }
 
         .panel-header {
@@ -184,7 +220,7 @@
         textarea:focus {
             outline: none;
             border-color: var(--panel-color, var(--border));
-            background: #fff;
+            background: var(--focus-bg);
         }
 
         .panel.is-source textarea {
@@ -193,13 +229,13 @@
 
         /* Invalid input state */
         .panel.is-invalid textarea {
-            border-color: #e53e3e;
-            background: #fff5f5;
+            border-color: var(--error);
+            background: var(--error-bg);
         }
 
         .panel.is-invalid .panel-badge {
-            background: #e53e3e;
-            color: white;
+            background: var(--error);
+            color: var(--on-color);
         }
 
         /* Text panel spans full width */
@@ -330,13 +366,13 @@
 
         .seg input:checked + span {
             background: var(--panel-color);
-            color: white;
+            color: var(--on-color);
         }
 
         .sep-warning {
             margin-top: 0.4rem;
             font-size: 0.75rem;
-            color: #b7791f;
+            color: var(--warn);
         }
 
         .toolbar {
@@ -366,6 +402,48 @@
             .seg span { line-height: 30px; padding: 0 0.6rem; }
         }
 
+        /* Message + size counter row under each field */
+        .panel-meta {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-top: 0.35rem;
+            min-height: 1.1rem;
+            font-size: 0.75rem;
+        }
+
+        .field-msg {
+            min-width: 0;
+            color: var(--warn);
+        }
+
+        .field-msg.is-error {
+            color: var(--error);
+        }
+
+        .count {
+            margin-left: auto;
+            color: var(--text-muted);
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Other fields while the field being typed in is invalid */
+        .panel.is-stale textarea {
+            opacity: 0.45;
+        }
+
+        .toolbar-divider {
+            width: 1px;
+            height: 18px;
+            background: var(--border);
+        }
+
+        @media (max-width: 480px) {
+            .toolbar-divider { display: none; }
+        }
+
         .sr-only {
             position: absolute;
             width: 1px;
@@ -392,13 +470,15 @@
                 <label><input type="radio" name="sep-all" value="space" data-sep-for="dec bin hex"><span>Space</span></label>
                 <label><input type="radio" name="sep-all" value="none" data-sep-for="dec bin hex"><span>None</span></label>
             </div>
+            <span class="toolbar-divider" aria-hidden="true"></span>
+            <button type="button" class="icon-btn" id="clear-all">Clear all</button>
         </div>
 
         <main class="converter-grid">
             <!-- Text Input -->
             <div class="panel panel-text" data-format="text">
                 <div class="panel-header">
-                    <span class="panel-title"><a href="https://en.wikipedia.org/wiki/ASCII" target="_blank">TEXT</a></span>
+                    <span class="panel-title" id="title-text"><a href="https://en.wikipedia.org/wiki/ASCII" target="_blank">TEXT</a></span>
                     <div class="panel-actions">
                         <span class="panel-badge">TXT</span>
                         <button type="button" class="icon-btn" data-copy="text" aria-label="Copy Text" title="Copy Text">
@@ -408,13 +488,16 @@
                         </button>
                     </div>
                 </div>
-                <textarea id="text-input" placeholder="Enter your text here..."></textarea>
+                <textarea id="text-input" placeholder="Enter your text here..." aria-labelledby="title-text" aria-describedby="count-text"></textarea>
+                <div class="panel-meta">
+                    <span class="count" id="count-text" data-count-for="text"></span>
+                </div>
             </div>
 
             <!-- ASCII Decimal -->
             <div class="panel" data-format="dec">
                 <div class="panel-header">
-                    <span class="panel-title"><a href="https://en.wikipedia.org/wiki/ASCII" target="_blank">ASCII Decimal</a></span>
+                    <span class="panel-title" id="title-dec"><a href="https://en.wikipedia.org/wiki/ASCII" target="_blank">ASCII Decimal</a></span>
                     <div class="panel-actions">
                         <span class="panel-badge">DEC</span>
                         <button type="button" class="icon-btn" data-copy="dec" aria-label="Copy ASCII Decimal" title="Copy ASCII Decimal">
@@ -424,14 +507,18 @@
                         </button>
                     </div>
                 </div>
-                <textarea id="decimal-input" placeholder="065 083 067 073 073..."></textarea>
+                <textarea id="decimal-input" placeholder="065 083 067 073 073..." aria-labelledby="title-dec" aria-describedby="msg-dec count-dec"></textarea>
+                <div class="panel-meta">
+                    <p class="field-msg" id="msg-dec" data-msg-for="dec" hidden></p>
+                    <span class="count" id="count-dec" data-count-for="dec"></span>
+                </div>
                 <p class="sep-warning" data-warn-for="dec" hidden></p>
             </div>
 
             <!-- Binary -->
             <div class="panel" data-format="bin">
                 <div class="panel-header">
-                    <span class="panel-title"><a href="https://en.wikipedia.org/wiki/Binary_code" target="_blank">Binary</a></span>
+                    <span class="panel-title" id="title-bin"><a href="https://en.wikipedia.org/wiki/Binary_code" target="_blank">Binary</a></span>
                     <div class="panel-actions">
                         <span class="panel-badge">BIN</span>
                         <button type="button" class="icon-btn" data-copy="bin" aria-label="Copy Binary" title="Copy Binary">
@@ -441,14 +528,18 @@
                         </button>
                     </div>
                 </div>
-                <textarea id="binary-input" placeholder="01001000 01100101 01101100..."></textarea>
+                <textarea id="binary-input" placeholder="01001000 01100101 01101100..." aria-labelledby="title-bin" aria-describedby="msg-bin count-bin"></textarea>
+                <div class="panel-meta">
+                    <p class="field-msg" id="msg-bin" data-msg-for="bin" hidden></p>
+                    <span class="count" id="count-bin" data-count-for="bin"></span>
+                </div>
                 <p class="sep-warning" data-warn-for="bin" hidden></p>
             </div>
 
             <!-- Hexadecimal -->
             <div class="panel" data-format="hex">
                 <div class="panel-header">
-                    <span class="panel-title"><a href="https://en.wikipedia.org/wiki/Hexadecimal" target="_blank">Hexadecimal</a></span>
+                    <span class="panel-title" id="title-hex"><a href="https://en.wikipedia.org/wiki/Hexadecimal" target="_blank">Hexadecimal</a></span>
                     <div class="panel-actions">
                         <span class="panel-badge">HEX</span>
                         <button type="button" class="icon-btn" data-copy="hex" aria-label="Copy Hexadecimal" title="Copy Hexadecimal">
@@ -458,14 +549,18 @@
                         </button>
                     </div>
                 </div>
-                <textarea id="hex-input" placeholder="48 65 6c 6c 6f..."></textarea>
+                <textarea id="hex-input" placeholder="48 65 6c 6c 6f..." aria-labelledby="title-hex" aria-describedby="msg-hex count-hex"></textarea>
+                <div class="panel-meta">
+                    <p class="field-msg" id="msg-hex" data-msg-for="hex" hidden></p>
+                    <span class="count" id="count-hex" data-count-for="hex"></span>
+                </div>
                 <p class="sep-warning" data-warn-for="hex" hidden></p>
             </div>
 
             <!-- Base64 -->
             <div class="panel" data-format="b64">
                 <div class="panel-header">
-                    <span class="panel-title"><a href="https://en.wikipedia.org/wiki/Base64" target="_blank">Base64</a></span>
+                    <span class="panel-title" id="title-b64"><a href="https://en.wikipedia.org/wiki/Base64" target="_blank">Base64</a></span>
                     <div class="panel-actions">
                         <span class="panel-badge">B64</span>
                         <button type="button" class="icon-btn" data-copy="b64" aria-label="Copy Base64" title="Copy Base64">
@@ -475,7 +570,11 @@
                         </button>
                     </div>
                 </div>
-                <textarea id="base64-input" placeholder="SGVsbG8gV29ybGQ="></textarea>
+                <textarea id="base64-input" placeholder="SGVsbG8gV29ybGQ=" aria-labelledby="title-b64" aria-describedby="msg-b64 count-b64"></textarea>
+                <div class="panel-meta">
+                    <p class="field-msg" id="msg-b64" data-msg-for="b64" hidden></p>
+                    <span class="count" id="count-b64" data-count-for="b64"></span>
+                </div>
             </div>
         </main>
 
@@ -536,6 +635,8 @@
         function setInvalid(format, isInvalid) {
             const panel = document.querySelector(`[data-format="${format}"]`);
             panel.classList.toggle('is-invalid', isInvalid);
+            if (isInvalid) inputs[format].setAttribute('aria-invalid', 'true');
+            else inputs[format].removeAttribute('aria-invalid');
         }
 
         // Validation functions
@@ -586,6 +687,15 @@
         // Decoding functions
         function decimalToText(decimal) {
             if (!decimal.trim()) return '';
+            return decimalCodes(decimal).map(c => {
+                const n = parseInt(c, 10);
+                return n > 0 ? String.fromCharCode(n) : '';
+            }).join('');
+        }
+
+        // Splits decimal input into codes (strings of digits).
+        function decimalCodes(decimal) {
+            if (!decimal.trim()) return [];
             const tokens = decimal.replace(/\D/g, ' ').trim().split(/\s+/);
             // A char code has at most 5 digits (65535). Tokens of 6+ digits can
             // only be codes written without separator ("072101108"): read them
@@ -595,10 +705,7 @@
                 if (t.length < 6) { codes.push(t); return; }
                 for (let i = 0; i + 3 <= t.length; i += 3) codes.push(t.substring(i, i + 3));
             });
-            return codes.map(c => {
-                const n = parseInt(c, 10);
-                return n > 0 ? String.fromCharCode(n) : '';
-            }).join('');
+            return codes;
         }
 
         function binaryToText(binary) {
@@ -638,6 +745,8 @@
 
         // Update all fields from text
         function updateFromText(text, exclude) {
+            // Overwritten fields hold generated, valid content.
+            Object.keys(inputs).forEach(f => { if (f !== exclude) setInvalid(f, false); });
             if (exclude !== 'text') inputs.text.value = text;
             if (exclude !== 'dec') inputs.dec.value = text ? textToDecimal(text, SEP[prefs.dec]) : '';
             if (exclude !== 'bin') inputs.bin.value = text ? textToBinary(text, SEP[prefs.bin]) : '';
@@ -799,9 +908,145 @@
             copyButtons.forEach(btn => { btn.disabled = !inputs[btn.dataset.copy].value; });
         }
 
+        // ---- Error messages and hints under each field ----
+        const VALID_CHAR = { dec: /[\d\s]/, bin: /[01\s]/, hex: /[0-9a-fA-F\s]/, b64: /[A-Za-z0-9+/=\s]/ };
+        const EXPECTED = {
+            dec: 'a decimal digit',
+            bin: 'a binary digit (0 or 1)',
+            hex: 'a hexadecimal digit (0\u20119, a\u2011f)',
+            b64: 'a Base64 character (A\u2011Z, a\u2011z, 0\u20119, +, /, =)'
+        };
+
+        const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+        const lastIgnored = (n, word) =>
+            n === 1 ? `The last ${word} is ignored` : `The last ${n} ${word}s are ignored`;
+
+        function describeChar(c) {
+            return /[\p{L}\p{N}\p{P}\p{S}]/u.test(c)
+                ? `"${c}"`
+                : 'U+' + c.codePointAt(0).toString(16).toUpperCase().padStart(4, '0');
+        }
+
+        function invalidMessage(f, value) {
+            const chars = Array.from(value);
+            const bad = [];
+            chars.forEach((c, i) => { if (!VALID_CHAR[f].test(c)) bad.push(i); });
+            if (!bad.length) return '';
+            let msg = `${describeChar(chars[bad[0]])} at position ${bad[0] + 1} is not ${EXPECTED[f]}`;
+            if (bad.length > 1) msg += ` (${plural(bad.length - 1, 'more invalid character')})`;
+            return msg + '. The other fields keep the last valid result.';
+        }
+
+        // Valid input that the decoder partly ignores.
+        function hintMessage(f, value) {
+            if (f === 'hex') {
+                if (value.replace(/[^0-9a-fA-F]/g, '').length % 2) {
+                    return lastIgnored(1, 'digit') + ': each byte needs 2 hex digits.';
+                }
+            } else if (f === 'bin') {
+                const n = value.replace(/[^01]/g, '').length % 8;
+                if (n) return lastIgnored(n, 'bit') + ': each byte needs 8 bits.';
+            } else if (f === 'dec') {
+                const tokens = value.trim() ? value.trim().split(/\s+/) : [];
+                const tooBig = tokens.find(t => t.length < 6 && parseInt(t, 10) > 65535);
+                if (tooBig) return `${tooBig} is above 65535, the largest character code.`;
+                const cut = tokens.find(t => t.length >= 6 && t.length % 3);
+                if (cut) return lastIgnored(cut.length % 3, 'digit') + ': codes without separator are read in groups of 3 digits.';
+            } else if (f === 'b64' && value.trim()) {
+                try { atob(value.trim()); }
+                catch (e) { return 'This Base64 is incomplete: check its length and the "=" padding at the end.'; }
+            }
+            return '';
+        }
+
+        function isInvalidPanel(f) {
+            return inputs[f].closest('.panel').classList.contains('is-invalid');
+        }
+
+        function refreshMessages() {
+            document.querySelectorAll('[data-msg-for]').forEach(el => {
+                const f = el.dataset.msgFor;
+                const value = inputs[f].value;
+                const invalid = isInvalidPanel(f);
+                const text = invalid ? invalidMessage(f, value)
+                    : currentSource === f ? hintMessage(f, value) : '';
+                el.textContent = text;
+                el.hidden = !text;
+                el.classList.toggle('is-error', invalid && !!text);
+            });
+            // Grey out results that no longer match the field being typed in.
+            const sourceInvalid = !!currentSource && isInvalidPanel(currentSource);
+            panels.forEach(p => p.classList.toggle('is-stale',
+                sourceInvalid && p.dataset.format !== currentSource));
+        }
+
+        // ---- Size counters ----
+        const utf8 = new TextEncoder();
+
+        function countLabel(f, value) {
+            if (!value) return '';
+            const chars = plural(Array.from(value).length, 'char');
+            if (isInvalidPanel(f)) return chars;
+            if (f === 'text') return `${chars} · ${plural(utf8.encode(value).length, 'byte')} UTF-8`;
+            if (f === 'dec') return `${plural(decimalCodes(value).length, 'code')} · ${chars}`;
+            if (f === 'bin') return `${plural(Math.floor(value.replace(/[^01]/g, '').length / 8), 'byte')} · ${chars}`;
+            if (f === 'hex') return `${plural(Math.floor(value.replace(/[^0-9a-fA-F]/g, '').length / 2), 'byte')} · ${chars}`;
+            try { return `${chars} · ${plural(atob(value.trim()).length, 'byte')}`; }
+            catch (e) { return chars; }
+        }
+
+        function refreshCounts() {
+            document.querySelectorAll('[data-count-for]').forEach(el => {
+                el.textContent = countLabel(el.dataset.countFor, inputs[el.dataset.countFor].value);
+            });
+        }
+
+        // ---- Clear all, with undo ----
+        const clearBtn = document.getElementById('clear-all');
+        let undoState = null;
+        let undoTimer;
+
+        function endUndo() {
+            if (!undoState) return;
+            undoState = null;
+            clearTimeout(undoTimer);
+            clearBtn.textContent = 'Clear all';
+        }
+
+        clearBtn.addEventListener('click', () => {
+            if (undoState) {
+                const state = undoState;
+                endUndo();
+                Object.keys(inputs).forEach(f => {
+                    inputs[f].value = state.values[f];
+                    setInvalid(f, state.invalid.includes(f));
+                });
+                setSource(state.source);
+                copyStatus.textContent = 'Fields restored';
+            } else {
+                undoState = {
+                    values: Object.fromEntries(Object.keys(inputs).map(f => [f, inputs[f].value])),
+                    invalid: Object.keys(inputs).filter(isInvalidPanel),
+                    source: currentSource
+                };
+                Object.keys(inputs).forEach(f => { inputs[f].value = ''; setInvalid(f, false); });
+                setSource(null);
+                clearBtn.textContent = 'Undo clear';
+                copyStatus.textContent = 'All fields cleared. Press Undo clear to restore them.';
+                undoTimer = setTimeout(() => { endUndo(); refreshUi(); }, 5000);
+            }
+            refreshUi();
+        });
+
+        // Typing or changing a setting after a clear drops the undo.
+        document.addEventListener('input', endUndo);
+
         function refreshUi() {
             refreshCopyButtons();
             refreshWarnings();
+            refreshMessages();
+            refreshCounts();
+            clearBtn.disabled = !undoState && Object.values(inputs).every(i => !i.value);
         }
 
         // Runs after the per-field handlers above (event bubbling order).
