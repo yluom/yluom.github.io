@@ -15,8 +15,9 @@
  *      (downlink) ; l'app décode le message dans TEXT ;
  *   3. perte du signal, le satellite sort, le message s'efface et l'état
  *      d'origine est restauré à l'identique (valeurs, classes, curseur).
- * Une frappe clavier ou un clic dans un champ interrompt tout et restaure
- * immédiatement.
+ * Se servir de l'app (saisie ou focus dans un champ, clic sur un contrôle,
+ * Échap) interrompt tout et restaure immédiatement ; faire défiler la page,
+ * y compris au doigt sur les champs, ne l'interrompt pas.
  *
  * ?egg dans l'URL : première apparition au bout de 1 s (pour tester).
  *
@@ -294,20 +295,25 @@
     };
   }
 
-  // Une touche clavier ou un clic dans un champ interrompt l'animation et
-  // restaure immédiatement l'état d'origine.
+  // L'animation s'interrompt (et l'état d'origine est restauré avant que
+  // l'action de l'utilisateur ne s'applique) dès qu'il veut se servir de l'app :
+  // saisie dans un champ, focus dans un champ, clic sur un contrôle (Copy,
+  // Clear all, séparateur, thème…) ou Échap. Faire défiler la page, au doigt
+  // comme à la molette, ne l'interrompt pas.
   function session() {
     const restore = snapshot();
     const s = { aborted: false, restored: false };
     const doRestore = () => { if (!s.restored) { s.restored = true; restore(); } };
     const abort = () => { if (!s.aborted) { s.aborted = true; doRestore(); } };
-    const onKey = () => abort();
-    const onPointer = e => { if (e.target && e.target.tagName === 'TEXTAREA') abort(); };
-    document.addEventListener('keydown', onKey, true);
-    document.addEventListener('pointerdown', onPointer, true);
+    const handlers = {
+      beforeinput: e => { if (e.isTrusted) abort(); },
+      focusin: e => { if (e.target && e.target.tagName === 'TEXTAREA') abort(); },
+      click: e => { if (e.isTrusted && e.target.closest && e.target.closest('button, input, select, label, a')) abort(); },
+      keydown: e => { if (e.key === 'Escape') abort(); },
+    };
+    Object.entries(handlers).forEach(([type, fn]) => document.addEventListener(type, fn, true));
     s.end = () => {
-      document.removeEventListener('keydown', onKey, true);
-      document.removeEventListener('pointerdown', onPointer, true);
+      Object.entries(handlers).forEach(([type, fn]) => document.removeEventListener(type, fn, true));
       doRestore();
     };
     s.sleep = ms => new Promise(r => {
@@ -477,7 +483,8 @@
 
   // Chaque glyphe vole d'une source vers une cible. Les cibles sont atteintes
   // dans l'ordre, étalées sur `spread` ms ; onLand(j) est appelé à l'arrivée
-  // de la cible j (c'est là qu'on écrit dans le vrai champ).
+  // de la cible j (c'est là qu'on écrit dans le vrai champ). offset() décale
+  // les cibles si la page défile pendant le vol.
   function flyGlyphs(cv, sess, o) {
     const { sources, targets, spread, dur } = o;
     const N = sources.length, M = targets.length, P = Math.max(N, M);
@@ -501,20 +508,21 @@
       }
       cv.clear();
       const ctx = cv.ctx;
+      const off = o.offset();
       o.onFrame(el, ctx);
       for (const f of flashes) {
         const k = (el - f.at) / 280;
         if (k >= 1) continue;
         ctx.globalAlpha = 0.35 * (1 - k);
         ctx.fillStyle = `rgb(${o.flash.join(',')})`;
-        ctx.fillRect(f.t.x - f.t.w / 2 - 1, f.t.y - f.t.h / 2, f.t.w + 2, f.t.h);
+        ctx.fillRect(f.t.x + off.x - f.t.w / 2 - 1, f.t.y + off.y - f.t.h / 2, f.t.w + 2, f.t.h);
       }
       for (const p of parts) {
         if (el < p.start || el >= p.start + p.d) continue;
         const u = (el - p.start) / p.d, e = easeInOutCubic(u), bump = Math.sin(u * Math.PI);
         const col = u < 0.5 ? mix(p.s.col, o.mid, u * 2) : mix(o.mid, p.t.col, (u - 0.5) * 2);
         cv.glyph(u < 0.5 ? p.s.ch : p.t.ch,
-          lerp(p.s.x, p.t.x, e) + bump * p.arc * 0.5, lerp(p.s.y, p.t.y, e) - bump * Math.abs(p.arc),
+          lerp(p.s.x, p.t.x + off.x, e) + bump * p.arc * 0.5, lerp(p.s.y, p.t.y + off.y, e) - bump * Math.abs(p.arc),
           lerp(p.s.size, p.t.size, e), u < 0.5 ? p.s.weight : p.t.weight, col, 1);
       }
       return el < end;
@@ -716,10 +724,13 @@
         const s = orbitAt(passP(dlT0 + (M > 1 ? (j / (M - 1)) * DSPREAD : 0) + DDUR * 0.15 - passT0));
         return { x: s.x, y: s.y + 14, ch: t.ch, col: green, size: 5, weight: 700 };
       });
-      const tr = bin.getBoundingClientRect();
+      // si la page défile pendant le downlink, les bits suivent le champ
+      const tr0 = bin.getBoundingClientRect();
+      let tr = tr0;
       let landed = 0;
       await flyGlyphs(cv, sess, {
         sources, targets, spread: DSPREAD, dur: DDUR, mid: green, flash: green, arc: 6,
+        offset: () => { tr = bin.getBoundingClientRect(); return { x: tr.left - tr0.left, y: tr.top - tr0.top }; },
         onLand: j => { landed = j + 1; setField(bin, value.slice(0, targets[j].i + 1), true); },
         onFrame: el => {
           const s = moveSat(passP(performance.now() - passT0));
