@@ -16,13 +16,16 @@
  *              (BIN → HEX → DEC → B64 → TEXT) en changeant de forme et de couleur
  *   portrait : « coucou freulere » est tapé, puis son binaire quitte le champ
  *              Binary pour dessiner le visage de freulere et y retourne
+ *   remix    : la tête vole au centre en grandissant, un scan la change en
+ *              binaire, les bits dansent puis alimentent le champ Binary ;
+ *              l'app décode « coucou freulere » dans TEXT
  *
  * Les animations qui écrivent dans les champs restaurent ensuite l'état
  * d'origine à l'identique (valeurs, classes, curseur). Une frappe clavier ou un
  * clic dans un champ interrompt tout et restaure immédiatement.
  *
  * Choix du prototype : ?egg=<nom> (le premier délai passe alors à 1 s pour
- * tester). Sans paramètre : encode, relay, portrait, bits à tour de rôle.
+ * tester). Sans paramètre : remix, encode, relay, portrait, bits à tour de rôle.
  *
  * Contraintes : rien n'est chargé avant les 10 s, overlay en
  * pointer-events:none (seule la tête est cliquable), animations sur transform
@@ -33,8 +36,8 @@
   'use strict';
 
   const params = new URLSearchParams(location.search);
-  const EFFECT_NAMES = ['rain', 'type', 'bits', 'encode', 'relay', 'portrait'];
-  const ROTATION = ['encode', 'relay', 'portrait', 'bits']; // sans ?egg, enchaînés à chaque clic
+  const EFFECT_NAMES = ['rain', 'type', 'bits', 'encode', 'relay', 'portrait', 'remix'];
+  const ROTATION = ['remix', 'encode', 'relay', 'portrait', 'bits']; // sans ?egg, enchaînés à chaque clic
   const forced = EFFECT_NAMES.includes(params.get('egg')) ? params.get('egg') : null;
 
   const CFG = {
@@ -121,6 +124,7 @@
       user-select: none; -webkit-user-select: none; -webkit-user-drag: none; -webkit-tap-highlight-color: transparent;
       transform-origin: 50% 30%; filter: drop-shadow(0 3px 8px rgba(0, 0, 0, .18)); }
     .fz-canvas { position: absolute; left: 0; top: 0; }
+    .fz-big { position: absolute; left: 0; top: 0; will-change: transform, clip-path; filter: drop-shadow(0 6px 14px rgba(0, 0, 0, .18)); }
     .fz-halo { position: absolute; border-radius: 50%; background: radial-gradient(closest-side, rgba(245,245,245,.94) 60%, rgba(245,245,245,0)); }
     .fz-fly { position: absolute; left: 0; top: 0; width: 64px; height: 64px; will-change: transform; }
     .fz-fly img { display: block; width: 100%; height: 100%; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, .2)); }
@@ -221,7 +225,7 @@
 
     let name = forced || ROTATION[effectIndex++ % ROTATION.length];
     // les animations qui écrivent dans les champs ont besoin de les voir à l'écran
-    const NEEDS = { type: ['text-input'], encode: ['binary-input'], portrait: ['text-input', 'binary-input'] };
+    const NEEDS = { type: ['text-input'], encode: ['binary-input'], remix: ['binary-input'], portrait: ['text-input', 'binary-input'] };
     if (NEEDS[name] && !NEEDS[name].every(id => isInView(document.getElementById(id)))) name = name === 'type' ? 'rain' : 'bits';
     try {
       await EFFECTS[name](origin);
@@ -669,7 +673,7 @@
           y: cy - (grid * cell) / 2 + gy * cell + cell / 2,
           ch: bitsSeq ? bitsSeq[out.length % bitsSeq.length] : (Math.random() < 0.5 ? '0' : '1'),
           col: [0, 1, 2].map(k => (contrast === 1 ? data[i + k] : clamp((data[i + k] - 140) * contrast + 120, 0, 255))),
-          size: cell * 1.45, weight: 700,
+          size: cell * 1.45, weight: 700, gx, gy,
         });
       }
     }
@@ -681,6 +685,16 @@
       x: clamp(p.x, size / 2 + 12, innerWidth - size / 2 - 12),
       y: clamp(p.y, size / 2 + 12, innerHeight - size / 2 - 12),
     };
+  }
+
+  // Halo clair derrière un visage en glyphes, pour qu'il reste lisible sur l'app.
+  function makeHalo(c, size, before) {
+    const el = document.createElement('div');
+    el.className = 'fz-halo';
+    Object.assign(el.style, { left: c.x - size + 'px', top: c.y - size + 'px', width: size * 2 + 'px', height: size * 2 + 'px' });
+    layer.insertBefore(el, before);
+    el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: reduced ? 150 : 1000, easing: 'ease-out' });
+    return el;
   }
 
   function glowPanel(panel, rgb) {
@@ -873,11 +887,7 @@
       const GRID = 28, CELL = clamp(Math.round(Math.min(innerWidth, innerHeight) / 80), 6, 9), SIZE = GRID * CELL;
       const c = { x: innerWidth / 2, y: innerHeight / 2 };
       const face = headCells(c.x, c.y, GRID, CELL, seq, 1.6);
-      halo = document.createElement('div');
-      halo.className = 'fz-halo';
-      Object.assign(halo.style, { left: c.x - SIZE + 'px', top: c.y - SIZE + 'px', width: SIZE * 2 + 'px', height: SIZE * 2 + 'px' });
-      layer.insertBefore(halo, cv.c);
-      halo.animate([{ opacity: 0 }, { opacity: 1 }], { duration: reduced ? 150 : 1000, easing: 'ease-out' });
+      halo = makeHalo(c, SIZE, cv.c);
 
       bin.style.color = 'transparent';
       await flyGlyphs(cv, sess, {
@@ -924,7 +934,118 @@
     }
   }
 
-  const EFFECTS = { rain, type, bits, encode, relay, portrait };
+  // ---------- prototype 7 : remix (encode × portrait) ----------
+  // La tête rejoint le centre en grandissant, un scan la change en binaire
+  // (les vrais bits de « coucou freulere »), les bits dansent, puis ils
+  // alimentent le champ Binary un par un ; l'app décode le message dans TEXT.
+  async function remix(origin) {
+    const bin = field('bin');
+    const sess = session();
+    const cv = glyphCanvas();
+    let halo = null, big = null;
+    try {
+      const GRID = 28, CELL = clamp(Math.round(Math.min(innerWidth, innerHeight) / 80), 6, 9), SIZE = GRID * CELL;
+      const c = { x: innerWidth / 2, y: innerHeight / 2 };
+      const top = c.y - SIZE / 2, left = c.x - SIZE / 2;
+      const value = ENC.bin(MSG);
+      const face = headCells(c.x, c.y, GRID, CELL, value.replace(/ /g, ''), 1.6);
+      face.forEach(g => { g.home = g.ch; });
+      const green = formatColor('bin');
+
+      // 1. la tête vole au centre en grandissant
+      halo = makeHalo(c, SIZE, cv.c);
+      big = document.createElement('img');
+      big.src = headImg.src;
+      big.alt = '';
+      big.className = 'fz-big';
+      Object.assign(big.style, { width: SIZE + 'px', height: SIZE + 'px' });
+      layer.insertBefore(big, cv.c);
+      const s0 = 90 / SIZE;
+      const place = (x, y, s, r) => { big.style.transform = `translate(${x - SIZE / 2}px, ${y - SIZE / 2}px) scale(${s}) rotate(${r}deg)`; };
+      place(origin.x, origin.y, s0, 0);
+      await tween(reduced ? 250 : 850, t => {
+        if (sess.aborted) return;
+        const e = easeInOutCubic(t), arc = Math.sin(t * Math.PI);
+        place(lerp(origin.x, c.x, e), lerp(origin.y, c.y, e) - arc * 70, lerp(s0, 1, e), arc * -12);
+      });
+      if (sess.aborted) return;
+      await sess.sleep(150);
+
+      // 2. scan de haut en bas : la photo devient binaire
+      const SCAN = reduced ? 250 : 900;
+      let t0 = performance.now();
+      await frames(sess, now => {
+        const t = clamp((now - t0) / SCAN, 0, 1);
+        const scanY = top - 12 + (SIZE + 24) * t;
+        big.style.clipPath = `inset(${clamp(((scanY - top) / SIZE) * 100, 0, 100)}% 0 0 0)`;
+        cv.clear();
+        for (const g of face) {
+          if (g.y > scanY + 4) continue;
+          const k = clamp(1 - (scanY - g.y) / 22, 0, 1);
+          cv.glyph(g.ch, g.x, g.y, g.size * (1 + 0.3 * k), g.weight, mix(g.col, green, k), 1);
+        }
+        cv.ctx.globalAlpha = 0.55 * Math.sin(t * Math.PI);
+        cv.ctx.fillStyle = `rgb(${green.join(',')})`;
+        cv.ctx.fillRect(left - 10, scanY - 1, SIZE + 20, 2);
+        return t < 1;
+      });
+      big.remove();
+      big = null;
+      if (sess.aborted) return;
+
+      // 3. les bits dansent : vague, sauts sur le temps, balancement, pirouette
+      const DANCE = reduced ? 600 : 2800, BEAT = 400, SPIN0 = 1200, SPIN = 800;
+      let lastBeat = -1;
+      t0 = performance.now();
+      await frames(sess, now => {
+        const el = now - t0, s = el / 1000;
+        const env = clamp(el / 300, 0, 1) * clamp((DANCE - el) / 500, 0, 1);
+        const beat = Math.floor(el / BEAT), pulse = Math.exp(-((el % BEAT) / BEAT) * 5);
+        if (beat !== lastBeat) {
+          lastBeat = beat;
+          const settle = el > DANCE - 600;
+          for (const g of face) g.ch = settle ? g.home : (Math.random() < 0.15 ? (g.ch === '0' ? '1' : '0') : g.ch);
+        }
+        const sway = Math.sin(s * TAU * 0.6) * 16 * env;
+        const spin = reduced ? 1 : Math.cos(easeInOutCubic(clamp((el - SPIN0) / SPIN, 0, 1)) * TAU);
+        cv.clear();
+        for (const g of face) {
+          const jumper = (g.gy + beat) % 2 === 0;
+          const wave = Math.sin(s * TAU * 1.3 + g.gx * 0.5) * 5;
+          const jump = jumper ? pulse * 8 : 0;
+          const x = c.x + (g.x + sway - c.x) * spin;
+          const y = g.y + (wave - jump) * env;
+          const k = pulse * env * (jumper ? 1 : 0.25);
+          cv.glyph(g.ch, x, y, g.size * (1 + 0.35 * k), g.weight, mix(g.col, green, k * 0.7), 1);
+        }
+        return el < DANCE;
+      });
+      face.forEach(g => { g.ch = g.home; });
+      if (sess.aborted) return;
+
+      // 4. les bits alimentent le champ Binary, l'app décode dans TEXT
+      setField(bin, '', true);
+      halo.animate([{ opacity: 1 }, { opacity: 0 }], { duration: reduced ? 150 : 1600, easing: 'ease-in', fill: 'forwards' });
+      const targets = charTargets(bin, value);
+      await flyGlyphs(cv, sess, {
+        sources: face, targets,
+        spread: reduced ? 500 : 2400, dur: reduced ? 300 : 850,
+        drawWaiting: true, mid: green, flash: green, arc: 80,
+        onLand: j => setField(bin, value.slice(0, targets[j].i + 1), true),
+      });
+      if (sess.aborted) return;
+      glowPanel(panelOf('text'), formatColor('text'));
+      await sess.sleep(2400);
+      if (!sess.aborted) await eraseFields(sess, [bin], 700, true);
+    } finally {
+      if (big) big.remove();
+      if (halo) halo.remove();
+      cv.c.remove();
+      sess.end();
+    }
+  }
+
+  const EFFECTS = { rain, type, bits, encode, relay, portrait, remix };
 
   // ---------- boucle principale ----------
   async function main() {
