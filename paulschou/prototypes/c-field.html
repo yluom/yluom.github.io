@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<!-- Issue #3 prototype C: copy icon inside each field, separator switch under the field. See README.md. -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paulschou Converter - ASCII/Binary/Hex</title>
+    <meta name="description" content="Online utility to convert ASCII/ANSI, HEX, Binary, Base64, etc.">
+    <meta name="keywords" content="converter,binary,hexadecimal,binary encoder,binary decoder,binary translator,binary tools,binary converter,hexadecimal encoder/decoder,base 64">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg: #f5f5f5;
+            --panel-bg: #ffffff;
+            --input-bg: #fafafa;
+            --border: #e0e0e0;
+            --border-hover: #ccc;
+            --text: #333;
+            --text-light: #666;
+            --text-muted: #999;
+            --shadow: 0 2px 8px rgba(0,0,0,0.06);
+            --shadow-hover: 0 4px 16px rgba(0,0,0,0.1);
+
+            /* Format colors */
+            --color-text: #4a7c9b;
+            --color-dec: #c17f24;
+            --color-bin: #3a9a5b;
+            --color-hex: #7c5bad;
+            --color-b64: #2a9d8f;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Source Sans 3', Arial, Helvetica, sans-serif;
+            font-size: 15px;
+            line-height: 1.5;
+            color: var(--text);
+            background: var(--bg);
+            min-height: 100vh;
+            padding: 1.5rem 1rem;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            margin-bottom: 1.25rem;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 0.5rem;
+        }
+
+        .intro {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        /* Grid */
+        .converter-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        @media (max-width: 640px) {
+            .converter-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Panel */
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow);
+            position: relative;
+            border-left: 3px solid var(--border);
+        }
+
+        .panel:hover {
+            box-shadow: var(--shadow-hover);
+        }
+
+        /* Panel color variants */
+        .panel[data-format="text"] { --panel-color: var(--color-text); }
+        .panel[data-format="dec"] { --panel-color: var(--color-dec); }
+        .panel[data-format="bin"] { --panel-color: var(--color-bin); }
+        .panel[data-format="hex"] { --panel-color: var(--color-hex); }
+        .panel[data-format="b64"] { --panel-color: var(--color-b64); }
+
+        /* Active source state */
+        .panel.is-source {
+            border-left-color: var(--panel-color);
+            background: linear-gradient(90deg, color-mix(in srgb, var(--panel-color) 4%, white) 0%, white 100%);
+        }
+
+        .panel.is-source .panel-badge {
+            background: var(--panel-color);
+            color: white;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .panel-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text);
+        }
+
+        .panel-title a {
+            color: inherit;
+            text-decoration: none;
+            transition: color 0.15s;
+        }
+
+        .panel.is-source .panel-title a {
+            color: var(--panel-color);
+        }
+
+        .panel-title a:hover {
+            opacity: 0.8;
+        }
+
+        .panel-badge {
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            background: var(--input-bg);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100px;
+            padding: 0.75rem;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.8rem;
+            line-height: 1.5;
+            color: var(--text);
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            resize: vertical;
+            transition: all 0.2s ease;
+        }
+
+        textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--panel-color, var(--border));
+            background: #fff;
+        }
+
+        .panel.is-source textarea {
+            border-color: color-mix(in srgb, var(--panel-color) 40%, transparent);
+        }
+
+        /* Invalid input state */
+        .panel.is-invalid textarea {
+            border-color: #e53e3e;
+            background: #fff5f5;
+        }
+
+        .panel.is-invalid .panel-badge {
+            background: #e53e3e;
+            color: white;
+        }
+
+        /* Text panel spans full width */
+        .panel-text {
+            grid-column: 1 / -1;
+        }
+
+        .panel-text textarea {
+            height: 80px;
+        }
+
+        /* Footer */
+        footer {
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .credits {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .credits a {
+            color: var(--color-text);
+            text-decoration: none;
+        }
+
+        .credits a:hover {
+            text-decoration: underline;
+        }
+
+        .credits .sep {
+            color: var(--border);
+        }
+
+        /* ---- Issue #3: copy buttons + separator options ---- */
+        .panel-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .icon-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+            height: 24px;
+            min-width: 24px;
+            padding: 0 0.3rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: var(--panel-bg);
+            color: var(--text-light);
+            font: inherit;
+            font-size: 0.7rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .icon-btn:hover:not(:disabled) {
+            border-color: var(--panel-color, var(--border-hover));
+            color: var(--panel-color, var(--text));
+        }
+
+        .icon-btn:focus-visible,
+        .seg input:focus-visible + span {
+            outline: 2px solid var(--panel-color, var(--color-text));
+            outline-offset: 1px;
+        }
+
+        .icon-btn:disabled {
+            opacity: 0.4;
+            cursor: default;
+        }
+
+        .icon-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .icon-btn .icon-check { display: none; }
+        .icon-btn.is-copied { border-color: var(--color-bin); color: var(--color-bin); }
+        .icon-btn.is-copied .icon-copy { display: none; }
+        .icon-btn.is-copied .icon-check { display: inline; }
+
+        .seg {
+            display: inline-flex;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .seg label {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .seg input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .seg span {
+            display: block;
+            padding: 0 0.45rem;
+            line-height: 22px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            background: var(--panel-bg);
+            white-space: pre;
+            transition: all 0.15s ease;
+        }
+
+        .seg label + label span {
+            border-left: 1px solid var(--border);
+        }
+
+        .seg input:checked + span {
+            background: var(--panel-color);
+            color: white;
+        }
+
+        .sep-warning {
+            margin-top: 0.4rem;
+            font-size: 0.75rem;
+            color: #b7791f;
+        }
+
+        .field {
+            position: relative;
+        }
+
+        .field textarea {
+            padding-right: 2.6rem;
+        }
+
+        .field-copy {
+            position: absolute;
+            top: 6px;
+            right: 18px; /* clear the textarea scrollbar */
+            opacity: 0.7;
+        }
+
+        .panel:hover .field-copy,
+        .field-copy:focus-visible,
+        .field-copy.is-copied {
+            opacity: 1;
+        }
+
+        .panel-footer {
+            display: flex;
+            align-items: center;
+            margin-top: 0.5rem;
+        }
+
+        .switch {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            font-size: 0.75rem;
+            color: var(--text-light);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .switch input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .switch .track {
+            position: relative;
+            width: 28px;
+            height: 16px;
+            border-radius: 8px;
+            background: var(--border-hover);
+            transition: background 0.15s ease;
+        }
+
+        .switch .track::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: white;
+            transition: transform 0.15s ease;
+        }
+
+        .switch input:checked + .track { background: var(--panel-color); }
+        .switch input:checked + .track::after { transform: translateX(12px); }
+        .switch input:focus-visible + .track {
+            outline: 2px solid var(--panel-color);
+            outline-offset: 2px;
+        }
+
+        @media (pointer: coarse) {
+            .field-copy { opacity: 1; }
+            .switch .track { width: 36px; height: 20px; border-radius: 10px; }
+            .switch .track::after { width: 16px; height: 16px; }
+            .switch input:checked + .track::after { transform: translateX(16px); }
+        }
+
+        @media (pointer: coarse) {
+            .icon-btn { height: 32px; min-width: 32px; }
+            .seg span { line-height: 30px; padding: 0 0.6rem; }
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Paulschou Converter</h1>
+            <p class="intro">Live encode & decode — type in any field</p>
+        </header>
+
+        <main class="converter-grid">
+            <!-- Text Input -->
+            <div class="panel panel-text" data-format="text">
+                <div class="panel-header">
+                    <span class="panel-title"><a href="https://en.wikipedia.org/wiki/ASCII" target="_blank">TEXT</a></span>
+                    <div class="panel-actions">
+                        <span class="panel-badge">TXT</span>
+                    </div>
+                </div>
+                <div class="field">
+                    <textarea id="text-input" placeholder="Enter your text here..."></textarea>
+                    <button type="button" class="icon-btn field-copy" data-copy="text" aria-label="Copy Text" title="Copy Text">
+                            <svg class="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+                            <svg class="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>
+                        </button>
+                </div>
+            </div>
+
+            <!-- ASCII Decimal -->
+            <div class="panel" data-format="dec">
+                <div class="panel-header">
+                    <span class="panel-title"><a href="https://en.wikipedia.org/wiki/ASCII" target="_blank">ASCII Decimal</a></span>
+                    <div class="panel-actions">
+                        <span class="panel-badge">DEC</span>
+                    </div>
+                </div>
+                <div class="field">
+                    <textarea id="decimal-input" placeholder="065 083 067 073 073..."></textarea>
+                    <button type="button" class="icon-btn field-copy" data-copy="dec" aria-label="Copy ASCII Decimal" title="Copy ASCII Decimal">
+                            <svg class="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+                            <svg class="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>
+                        </button>
+                </div>
+                <div class="panel-footer">
+                    <label class="switch"><input type="checkbox" data-sep-for="dec"><span class="track" aria-hidden="true"></span>Spaces between codes</label>
+                </div>
+                <p class="sep-warning" data-warn-for="dec" hidden></p>
+            </div>
+
+            <!-- Binary -->
+            <div class="panel" data-format="bin">
+                <div class="panel-header">
+                    <span class="panel-title"><a href="https://en.wikipedia.org/wiki/Binary_code" target="_blank">Binary</a></span>
+                    <div class="panel-actions">
+                        <span class="panel-badge">BIN</span>
+                    </div>
+                </div>
+                <div class="field">
+                    <textarea id="binary-input" placeholder="01001000 01100101 01101100..."></textarea>
+                    <button type="button" class="icon-btn field-copy" data-copy="bin" aria-label="Copy Binary" title="Copy Binary">
+                            <svg class="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+                            <svg class="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>
+                        </button>
+                </div>
+                <div class="panel-footer">
+                    <label class="switch"><input type="checkbox" data-sep-for="bin"><span class="track" aria-hidden="true"></span>Spaces between bytes</label>
+                </div>
+                <p class="sep-warning" data-warn-for="bin" hidden></p>
+            </div>
+
+            <!-- Hexadecimal -->
+            <div class="panel" data-format="hex">
+                <div class="panel-header">
+                    <span class="panel-title"><a href="https://en.wikipedia.org/wiki/Hexadecimal" target="_blank">Hexadecimal</a></span>
+                    <div class="panel-actions">
+                        <span class="panel-badge">HEX</span>
+                    </div>
+                </div>
+                <div class="field">
+                    <textarea id="hex-input" placeholder="48 65 6c 6c 6f..."></textarea>
+                    <button type="button" class="icon-btn field-copy" data-copy="hex" aria-label="Copy Hexadecimal" title="Copy Hexadecimal">
+                            <svg class="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+                            <svg class="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>
+                        </button>
+                </div>
+                <div class="panel-footer">
+                    <label class="switch"><input type="checkbox" data-sep-for="hex"><span class="track" aria-hidden="true"></span>Spaces between bytes</label>
+                </div>
+                <p class="sep-warning" data-warn-for="hex" hidden></p>
+            </div>
+
+            <!-- Base64 -->
+            <div class="panel" data-format="b64">
+                <div class="panel-header">
+                    <span class="panel-title"><a href="https://en.wikipedia.org/wiki/Base64" target="_blank">Base64</a></span>
+                    <div class="panel-actions">
+                        <span class="panel-badge">B64</span>
+                    </div>
+                </div>
+                <div class="field">
+                    <textarea id="base64-input" placeholder="SGVsbG8gV29ybGQ="></textarea>
+                    <button type="button" class="icon-btn field-copy" data-copy="b64" aria-label="Copy Base64" title="Copy Base64">
+                            <svg class="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+                            <svg class="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>
+                        </button>
+                </div>
+            </div>
+        </main>
+
+        <div class="sr-only" aria-live="polite" id="copy-status"></div>
+
+        <footer>
+            <div class="credits">
+                <span>Coucou freulere</span>
+                <span>Original code: <a href="https://home.paulschou.net/tools/xlate/" target="_blank">Paul Schou</a></span>
+                <span class="sep">·</span>
+                <span>Original idea: <a href="https://x.com/nciske" target="_blank">Nick Ciske</a></span>
+                <span class="sep">·</span>
+                <span><a href="https://github.com/yluom/yluom.github.io/tree/main/paulschou" target="_blank">Source code</a></span>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        const inputs = {
+            text: document.getElementById('text-input'),
+            dec: document.getElementById('decimal-input'),
+            bin: document.getElementById('binary-input'),
+            hex: document.getElementById('hex-input'),
+            b64: document.getElementById('base64-input')
+        };
+
+        const panels = document.querySelectorAll('.panel');
+
+        // ---- Separator preferences (issue #3) ----
+        const SEP = { space: ' ', none: '' };
+        const SEP_FORMATS = ['dec', 'bin', 'hex'];
+        const SEP_STORAGE_KEY = 'paulschou.separators';
+        const prefs = loadPrefs();
+
+        function loadPrefs() {
+            const p = { dec: 'space', bin: 'space', hex: 'space' };
+            try {
+                const saved = JSON.parse(localStorage.getItem(SEP_STORAGE_KEY));
+                if (saved) SEP_FORMATS.forEach(f => { if (saved[f] in SEP) p[f] = saved[f]; });
+            } catch (e) { /* storage unavailable: keep defaults */ }
+            return p;
+        }
+
+        function savePrefs() {
+            try { localStorage.setItem(SEP_STORAGE_KEY, JSON.stringify(prefs)); }
+            catch (e) { /* ignore */ }
+        }
+        let currentSource = null;
+
+        function setSource(format) {
+            panels.forEach(p => p.classList.remove('is-source'));
+            if (format) {
+                document.querySelector(`[data-format="${format}"]`).classList.add('is-source');
+            }
+            currentSource = format;
+        }
+
+        function setInvalid(format, isInvalid) {
+            const panel = document.querySelector(`[data-format="${format}"]`);
+            panel.classList.toggle('is-invalid', isInvalid);
+        }
+
+        // Validation functions
+        function isValidDecimal(val) {
+            return !val || /^[\d\s]*$/.test(val);
+        }
+
+        function isValidBinary(val) {
+            return !val || /^[01\s]*$/.test(val);
+        }
+
+        function isValidHex(val) {
+            return !val || /^[0-9a-fA-F\s]*$/.test(val);
+        }
+
+        function isValidBase64(val) {
+            return !val || /^[A-Za-z0-9+/=\s]*$/.test(val);
+        }
+
+        // Encoding functions
+        // `sep` defaults to a space so the original output is unchanged.
+        function textToDecimal(text, sep = ' ') {
+            return Array.from(text).map(c =>
+                c.charCodeAt(0).toString().padStart(3, '0')
+            ).join(sep);
+        }
+
+        function textToBinary(text, sep = ' ') {
+            return Array.from(text).map(c =>
+                c.charCodeAt(0).toString(2).padStart(8, '0')
+            ).join(sep);
+        }
+
+        function textToHex(text, sep = ' ') {
+            return Array.from(text).map(c =>
+                c.charCodeAt(0).toString(16).padStart(2, '0')
+            ).join(sep);
+        }
+
+        function textToBase64(text) {
+            try {
+                return btoa(unescape(encodeURIComponent(text)));
+            } catch (e) {
+                return '';
+            }
+        }
+
+        // Decoding functions
+        function decimalToText(decimal) {
+            if (!decimal.trim()) return '';
+            const tokens = decimal.replace(/\D/g, ' ').trim().split(/\s+/);
+            // A char code has at most 5 digits (65535). Tokens of 6+ digits can
+            // only be codes written without separator ("072101108"): read them
+            // as 3-digit groups, ignoring an incomplete trailing group.
+            const codes = [];
+            tokens.forEach(t => {
+                if (t.length < 6) { codes.push(t); return; }
+                for (let i = 0; i + 3 <= t.length; i += 3) codes.push(t.substring(i, i + 3));
+            });
+            return codes.map(c => {
+                const n = parseInt(c, 10);
+                return n > 0 ? String.fromCharCode(n) : '';
+            }).join('');
+        }
+
+        function binaryToText(binary) {
+            const clean = binary.replace(/[^01]/g, '');
+            if (!clean) return '';
+            let result = '';
+            for (let i = 0; i < clean.length; i += 8) {
+                const byte = clean.substring(i, i + 8);
+                if (byte.length === 8) {
+                    result += String.fromCharCode(parseInt(byte, 2));
+                }
+            }
+            return result;
+        }
+
+        function hexToText(hex) {
+            const clean = hex.replace(/[^0-9a-fA-F]/g, '');
+            if (!clean) return '';
+            let result = '';
+            for (let i = 0; i < clean.length; i += 2) {
+                const byte = clean.substring(i, i + 2);
+                if (byte.length === 2) {
+                    result += String.fromCharCode(parseInt(byte, 16));
+                }
+            }
+            return result;
+        }
+
+        function base64ToText(b64) {
+            try {
+                return decodeURIComponent(escape(atob(b64.trim())));
+            } catch (e) {
+                try { return atob(b64.trim()); }
+                catch (e2) { return ''; }
+            }
+        }
+
+        // Update all fields from text
+        function updateFromText(text, exclude) {
+            if (exclude !== 'text') inputs.text.value = text;
+            if (exclude !== 'dec') inputs.dec.value = text ? textToDecimal(text, SEP[prefs.dec]) : '';
+            if (exclude !== 'bin') inputs.bin.value = text ? textToBinary(text, SEP[prefs.bin]) : '';
+            if (exclude !== 'hex') inputs.hex.value = text ? textToHex(text, SEP[prefs.hex]) : '';
+            if (exclude !== 'b64') inputs.b64.value = text ? textToBase64(text) : '';
+        }
+
+        // Live conversion handlers
+        inputs.text.addEventListener('input', () => {
+            setSource('text');
+            updateFromText(inputs.text.value, 'text');
+        });
+
+        inputs.dec.addEventListener('input', () => {
+            setSource('dec');
+            const val = inputs.dec.value;
+            const valid = isValidDecimal(val);
+            setInvalid('dec', !valid);
+            if (valid) {
+                const text = decimalToText(val);
+                updateFromText(text, 'dec');
+            }
+        });
+
+        inputs.bin.addEventListener('input', () => {
+            setSource('bin');
+            const val = inputs.bin.value;
+            const valid = isValidBinary(val);
+            setInvalid('bin', !valid);
+            if (valid) {
+                const text = binaryToText(val);
+                updateFromText(text, 'bin');
+            }
+        });
+
+        inputs.hex.addEventListener('input', () => {
+            setSource('hex');
+            const val = inputs.hex.value;
+            const valid = isValidHex(val);
+            setInvalid('hex', !valid);
+            if (valid) {
+                const text = hexToText(val);
+                updateFromText(text, 'hex');
+            }
+        });
+
+        inputs.b64.addEventListener('input', () => {
+            setSource('b64');
+            const val = inputs.b64.value;
+            const valid = isValidBase64(val);
+            setInvalid('b64', !valid);
+            if (valid) {
+                const text = base64ToText(val);
+                updateFromText(text, 'b64');
+            }
+        });
+
+        // Clear source highlight on blur if empty
+        Object.values(inputs).forEach(input => {
+            input.addEventListener('blur', () => {
+                const allEmpty = Object.values(inputs).every(i => !i.value);
+                if (allEmpty) setSource(null);
+            });
+        });
+        // ---- Separator controls (issue #3) ----
+        // Any element with data-sep-for="dec bin hex" drives those formats:
+        // radio (value="space"|"none") or checkbox (checked = space).
+        const ENCODERS = { dec: textToDecimal, bin: textToBinary, hex: textToHex };
+        // Above these codes, output without separator can't be split back reliably.
+        const MAX_UNAMBIGUOUS = { dec: 999, bin: 255, hex: 255 };
+        const sepControls = document.querySelectorAll('[data-sep-for]');
+
+        function syncSepControls() {
+            sepControls.forEach(el => {
+                const modes = new Set(el.dataset.sepFor.split(' ').map(f => prefs[f]));
+                const mode = modes.size === 1 ? [...modes][0] : null;
+                if (el.type === 'checkbox') {
+                    el.checked = mode === 'space';
+                    el.indeterminate = mode === null;
+                } else {
+                    el.checked = el.value === mode;
+                }
+            });
+        }
+
+        function setSeparator(format, mode) {
+            prefs[format] = mode;
+            // Never rewrite what the user is typing: only re-render outputs.
+            if (currentSource !== format) {
+                const text = inputs.text.value;
+                inputs[format].value = text ? ENCODERS[format](text, SEP[mode]) : '';
+            }
+        }
+
+        sepControls.forEach(el => {
+            el.addEventListener('change', () => {
+                const mode = el.type === 'checkbox' ? (el.checked ? 'space' : 'none') : el.value;
+                el.dataset.sepFor.split(' ').forEach(f => setSeparator(f, mode));
+                savePrefs();
+                syncSepControls();
+                refreshUi();
+            });
+        });
+
+        function refreshWarnings() {
+            document.querySelectorAll('[data-warn-for]').forEach(el => {
+                const f = el.dataset.warnFor;
+                const max = MAX_UNAMBIGUOUS[f];
+                const ambiguous = prefs[f] === 'none' && currentSource !== f &&
+                    Array.from(inputs.text.value).some(c => c.charCodeAt(0) > max);
+                el.hidden = !ambiguous;
+                el.textContent = ambiguous
+                    ? `Contains characters above ${max}: without separator this can't be decoded back reliably.`
+                    : '';
+            });
+        }
+
+        // ---- Copy to clipboard (issue #3) ----
+        const copyButtons = document.querySelectorAll('[data-copy]');
+        const copyStatus = document.getElementById('copy-status');
+
+        async function copyToClipboard(str) {
+            if (navigator.clipboard && window.isSecureContext) {
+                try { await navigator.clipboard.writeText(str); return true; }
+                catch (e) { /* fall through */ }
+            }
+            const tmp = document.createElement('textarea');
+            tmp.value = str;
+            tmp.setAttribute('readonly', '');
+            tmp.style.position = 'fixed';
+            tmp.style.opacity = '0';
+            document.body.appendChild(tmp);
+            tmp.select();
+            let ok = false;
+            try { ok = document.execCommand('copy'); } catch (e) { /* ignore */ }
+            tmp.remove();
+            return ok;
+        }
+
+        copyButtons.forEach(btn => {
+            let timer;
+            btn.addEventListener('click', async () => {
+                const f = btn.dataset.copy;
+                const name = btn.closest('.panel').querySelector('.panel-title').textContent.trim();
+                const ok = await copyToClipboard(inputs[f].value);
+                btn.classList.toggle('is-copied', ok);
+                const label = btn.querySelector('.btn-label');
+                if (label) label.textContent = ok ? 'Copied' : 'Failed';
+                copyStatus.textContent = ok ? `${name} copied to clipboard` : `Could not copy ${name}`;
+                clearTimeout(timer);
+                timer = setTimeout(() => {
+                    btn.classList.remove('is-copied');
+                    if (label) label.textContent = 'Copy';
+                }, 1500);
+            });
+        });
+
+        function refreshCopyButtons() {
+            copyButtons.forEach(btn => { btn.disabled = !inputs[btn.dataset.copy].value; });
+        }
+
+        function refreshUi() {
+            refreshCopyButtons();
+            refreshWarnings();
+        }
+
+        // Runs after the per-field handlers above (event bubbling order).
+        document.addEventListener('input', refreshUi);
+        syncSepControls();
+        refreshUi();
+    </script>
+</body>
+</html>
