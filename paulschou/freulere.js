@@ -7,11 +7,12 @@
  * le survol dure (sinon elle est quasi impossible à attraper).
  *
  * Clic sur la tête → transmission Iridium, d'un seul tenant :
- *   1. la tête se détache du corps et vole au centre en grandissant ; en vol,
- *      un scan la change en binaire (les vrais bits de « coucou freulere ») ;
- *   2. un satellite Iridium passe : les bits montent vers lui (uplink), il
- *      fait un « Iridium flare », puis les renvoie par un faisceau dans le
- *      champ Binary (downlink) ; l'app décode le message dans TEXT ;
+ *   1. la tête se détache du corps et vole au centre en grandissant pendant
+ *      qu'un satellite Iridium entre sur son orbite ; son faisceau balaie la
+ *      tête et la change en binaire (les vrais bits de « coucou freulere ») ;
+ *   2. les bits montent vers le satellite (uplink), il fait un « Iridium
+ *      flare », puis les renvoie par un faisceau dans le champ Binary
+ *      (downlink) ; l'app décode le message dans TEXT ;
  *   3. perte du signal, le satellite sort, le message s'efface et l'état
  *      d'origine est restauré à l'identique (valeurs, classes, curseur).
  * Une frappe clavier ou un clic dans un champ interrompt tout et restaure
@@ -523,12 +524,13 @@
       const face = headCells(c.x, c.y, GRID, CELL, bits);
       const green = formatColor('bin');
 
-      // Satellite : orbite en pointillés en haut de l'écran, entrée rapide
-      // puis traversée lente pendant les transferts.
+      // Satellite : orbite en pointillés en haut de l'écran. Il entre dès le
+      // clic, arrive au-dessus de la tête pour la scanner, puis traverse
+      // lentement pendant les transferts.
       const orbitTop = Math.max(52, H * 0.1), orbitDrop = H * 0.16;
       const orbitAt = p => ({ x: lerp(-70, W + 70, p), y: orbitTop + orbitDrop * Math.pow(2 * p - 1, 2) });
-      const ENTER = reduced ? 300 : 1000, MID = reduced ? 1600 : 6000;
-      const passP = g => (g < 0 ? 0 : g < ENTER ? 0.3 * easeOutCubic(g / ENTER) : 0.3 + 0.4 * clamp((g - ENTER) / MID, 0, 1));
+      const ENTER = reduced ? 300 : 900, MID = reduced ? 1600 : 6000;
+      const passP = g => (g < 0 ? 0 : g < ENTER ? 0.42 * easeOutCubic(g / ENTER) : 0.42 + 0.3 * clamp((g - ENTER) / MID, 0, 1));
       sat = makeSatellite();
       const hud = sat.querySelector('.fz-hud');
       const say = txt => { if (hud.textContent !== txt) hud.textContent = txt; };
@@ -556,10 +558,11 @@
       say('IRIDIUM · SBD');
 
       // 1. vol + scan, en une seule boucle : la tête part tout de suite de sa
-      //    position dans le peek, et le scan démarre pendant le vol.
-      const FLY = reduced ? 300 : 850, SCAN0 = reduced ? 100 : 350, SCAN = reduced ? 300 : 950;
+      //    position dans le peek pendant que le satellite entre ; dès qu'il
+      //    est au-dessus, son faisceau balaie la tête et la change en binaire.
+      const FLY = reduced ? 300 : 850, SCAN0 = reduced ? 150 : 450, SCAN = reduced ? 300 : 1000;
       const t0 = performance.now();
-      const passT0 = t0 + SCAN0 + SCAN - ENTER; // le satellite arrive quand le scan finit
+      const passT0 = t0;
       let rot0 = pose.rot % 360;
       if (rot0 > 180) rot0 -= 360;
       if (rot0 < -180) rot0 += 360;
@@ -574,14 +577,21 @@
         const el = now - t0;
         const ft = clamp(el / FLY, 0, 1), e = easeOutCubic(ft);
         const st = clamp((el - SCAN0) / SCAN, 0, 1), scan = -SIZE / 2 - 12 + (SIZE + 24) * smoothstep(st);
-        const g0 = now - passT0;
+        const sp = moveSat(passP(now - passT0));
         cv.clear();
-        if (g0 > 0) { moveSat(passP(g0)); drawOrbit(0.4 * clamp(g0 / 400, 0, 1)); }
+        drawOrbit(0.4 * clamp(el / 400, 0, 1));
+        if (st > 0) say('IRIDIUM · SCAN');
 
+        const hx = lerp(pose.x, c.x, e), hy = lerp(pose.y, c.y, e) - Math.sin(ft * Math.PI) * 50;
+        const hr = (lerp(rot0, 0, e) * Math.PI) / 180, hs = lerp(s0, 1, e);
+        const toScreen = (lx, ly) => ({
+          x: hx + hs * (lx * Math.cos(hr) - ly * Math.sin(hr)),
+          y: hy + hs * (lx * Math.sin(hr) + ly * Math.cos(hr)),
+        });
         ctx.save();
-        ctx.translate(lerp(pose.x, c.x, e), lerp(pose.y, c.y, e) - Math.sin(ft * Math.PI) * 50);
-        ctx.rotate((lerp(rot0, 0, e) * Math.PI) / 180);
-        ctx.scale(lerp(s0, 1, e), lerp(s0, 1, e));
+        ctx.translate(hx, hy);
+        ctx.rotate(hr);
+        ctx.scale(hs, hs);
         // la photo, sous la ligne de scan
         ctx.save();
         ctx.beginPath();
@@ -597,12 +607,29 @@
           const k = clamp(1 - (scan - ly) / 22, 0, 1);
           cv.glyph(g.ch, g.x - c.x, ly, g.size * (1 + 0.3 * k), g.weight, mix(g.col, green, k), 1);
         }
-        if (st > 0 && st < 1) {
-          ctx.globalAlpha = 0.6 * Math.sin(st * Math.PI);
+        const beam = st > 0 && st < 1 ? Math.min(1, st * 8, (1 - st) * 8) : 0;
+        if (beam > 0) {
+          ctx.globalAlpha = 0.7 * beam;
           ctx.fillStyle = `rgb(${green.join(',')})`;
           ctx.fillRect(-SIZE / 2 - 10, scan - 1, SIZE + 20, 2);
         }
         ctx.restore();
+        // le faisceau du satellite, dont le bord trace la ligne de scan
+        if (beam > 0) {
+          const a = toScreen(-SIZE / 2 - 10, scan), b = toScreen(SIZE / 2 + 10, scan);
+          const grad = ctx.createLinearGradient(sp.x, sp.y, (a.x + b.x) / 2, (a.y + b.y) / 2);
+          grad.addColorStop(0, `rgba(${green.join(',')},.32)`);
+          grad.addColorStop(1, `rgba(${green.join(',')},.1)`);
+          ctx.globalAlpha = beam;
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.moveTo(sp.x - 2, sp.y + 14);
+          ctx.lineTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.lineTo(sp.x + 2, sp.y + 14);
+          ctx.closePath();
+          ctx.fill();
+        }
         return ft < 1 || st < 1;
       });
       if (sess.aborted) return;
