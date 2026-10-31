@@ -120,7 +120,10 @@
     const m = str.match(/\d+(\.\d+)?/g);
     return m ? m.slice(0, 3).map(Number) : [51, 51, 51];
   }
-  const formatColor = k => parseColor(getComputedStyle(document.documentElement).getPropertyValue('--color-' + k));
+  const cssColor = name => parseColor(getComputedStyle(document.documentElement).getPropertyValue(name));
+  const formatColor = k => cssColor('--color-' + k);
+  // Thème clair / sombre de l'app : on regarde la luminance du fond.
+  const isDark = () => { const [r, g, b] = cssColor('--bg'); return 0.2126 * r + 0.7152 * g + 0.0722 * b < 110; };
 
   // ---------- DOM ----------
   const style = document.createElement('style');
@@ -134,13 +137,15 @@
     .fz-wrap img.is-headless { pointer-events: none;
       -webkit-mask-image: linear-gradient(to bottom, transparent 80%, #000 88%); mask-image: linear-gradient(to bottom, transparent 80%, #000 88%); }
     .fz-canvas { position: absolute; left: 0; top: 0; }
-    .fz-halo { position: absolute; border-radius: 50%; background: radial-gradient(closest-side, rgba(245,245,245,.94) 60%, rgba(245,245,245,0)); }
+    .fz-halo { position: absolute; border-radius: 50%;
+      background: radial-gradient(closest-side, color-mix(in srgb, var(--bg, #f5f5f5) 94%, transparent) 60%, color-mix(in srgb, var(--bg, #f5f5f5) 0%, transparent)); }
     .fz-dim { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at 50% 15%, rgba(15, 17, 21, .08), rgba(15, 17, 21, .22)); }
     .fz-sat { position: absolute; left: 0; top: 0; will-change: transform; }
     .fz-sat svg { position: absolute; left: -36px; top: -23.5px; overflow: visible; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .2)); }
+    :root[data-theme="dark"] .fz-sat svg { filter: drop-shadow(0 0 4px rgba(190, 210, 255, .35)); }
     .fz-hud { position: absolute; left: 0; top: 26px; transform: translateX(-50%); white-space: nowrap;
-      font: 600 10px/1.5 Consolas, Monaco, "Courier New", monospace; letter-spacing: .04em; color: #555;
-      background: rgba(255, 255, 255, .88); border: 1px solid #e0e0e0; border-radius: 4px; padding: 0 6px; }
+      font: 600 10px/1.5 Consolas, Monaco, "Courier New", monospace; letter-spacing: .04em; color: var(--text-light, #555);
+      background: color-mix(in srgb, var(--panel-bg, #fff) 88%, transparent); border: 1px solid var(--border, #e0e0e0); border-radius: 4px; padding: 0 6px; }
     .fz-flare { position: absolute; left: 13px; top: 13px; width: 96px; height: 96px; margin: -48px 0 0 -48px; opacity: 0; border-radius: 50%;
       background: radial-gradient(circle, #fff 0 5%, rgba(255, 214, 90, .95) 11%, rgba(255, 190, 40, .45) 28%, rgba(255, 190, 40, 0) 62%); }
     .fz-flare::before, .fz-flare::after { content: ''; position: absolute; left: 50%; top: 50%; width: 170px; height: 2px; margin: -1px 0 0 -85px;
@@ -263,6 +268,7 @@
   function snapshot() {
     const fields = [...document.querySelectorAll('.converter-grid textarea')].map(el => [el, el.value, el.style.cssText, el.placeholder]);
     const panels = [...document.querySelectorAll('.converter-grid .panel')].map(el => [el, el.className]);
+    const msgs = [...document.querySelectorAll('[data-msg-for]')].map(el => [el, el.style.cssText]);
     const active = document.activeElement;
     const sel = active && active.tagName === 'TEXTAREA'
       ? { el: active, start: active.selectionStart, end: active.selectionEnd, dir: active.selectionDirection }
@@ -283,6 +289,7 @@
       }
       fields.forEach(([el, v]) => { el.value = v; });
       panels.forEach(([el, cls]) => { el.className = cls; });
+      msgs.forEach(([el, css]) => { el.style.cssText = css; });
       if (sel && document.activeElement === sel.el) sel.el.setSelectionRange(sel.start, sel.end, sel.dir);
     };
   }
@@ -407,8 +414,12 @@
   }
 
   // Échantillonne la tête en grille : une cellule opaque = un glyphe 0/1 coloré,
-  // couleurs contrastées pour que le visage reste lisible.
+  // couleurs contrastées pour que le visage reste lisible. En thème sombre, les
+  // tons sont éclaircis (sinon les cheveux disparaissent sur le fond).
   function headCells(cx, cy, grid, cell, bitsSeq) {
+    const tone = isDark()
+      ? v => clamp((v - 140) * 1.2 + 165, 90, 255)
+      : v => clamp((v - 140) * 1.6 + 120, 0, 255);
     const off = document.createElement('canvas');
     off.width = off.height = grid;
     const octx = off.getContext('2d', { willReadFrequently: true });
@@ -423,7 +434,7 @@
           x: cx - (grid * cell) / 2 + gx * cell + cell / 2,
           y: cy - (grid * cell) / 2 + gy * cell + cell / 2,
           ch: bitsSeq[out.length % bitsSeq.length],
-          col: [0, 1, 2].map(k => clamp((data[i + k] - 140) * 1.6 + 120, 0, 255)),
+          col: [0, 1, 2].map(k => tone(data[i + k])),
           size: cell * 1.45, weight: 700,
         });
       }
@@ -455,10 +466,12 @@
   function glowPanel(panel, rgb) {
     if (!panel) return;
     const c = `${rgb[0]},${rgb[1]},${rgb[2]}`;
+    const cs = getComputedStyle(panel).boxShadow;
+    const base = cs && cs !== 'none' ? cs + ', ' : '';
     panel.animate([
-      { boxShadow: `0 2px 8px rgba(0,0,0,.06), 0 0 0 0 rgba(${c},0)` },
-      { boxShadow: `0 2px 8px rgba(0,0,0,.06), 0 0 0 4px rgba(${c},.35)`, offset: 0.3 },
-      { boxShadow: `0 2px 8px rgba(0,0,0,.06), 0 0 0 0 rgba(${c},0)` },
+      { boxShadow: `${base}0 0 0 0 rgba(${c},0)` },
+      { boxShadow: `${base}0 0 0 4px rgba(${c},.35)`, offset: 0.3 },
+      { boxShadow: `${base}0 0 0 0 rgba(${c},0)` },
     ], { duration: 1200, easing: 'ease-out' });
   }
 
@@ -523,6 +536,7 @@
       const bits = value.replace(/ /g, '');
       const face = headCells(c.x, c.y, GRID, CELL, bits);
       const green = formatColor('bin');
+      const orbitColor = `rgb(${cssColor('--text-muted').join(',')})`;
 
       // Satellite : orbite en pointillés en haut de l'écran. Il entre dès le
       // clic, arrive au-dessus de la tête pour la scanner, puis traverse
@@ -543,7 +557,7 @@
       const drawOrbit = alpha => {
         if (alpha <= 0) return;
         ctx.globalAlpha = alpha;
-        ctx.strokeStyle = '#9aa0a8';
+        ctx.strokeStyle = orbitColor;
         ctx.lineWidth = 1;
         ctx.setLineDash([3, 6]);
         ctx.beginPath();
@@ -689,7 +703,11 @@
       });
       if (sess.aborted) return;
 
-      // 4. downlink : un faisceau vers le champ Binary, les bits y atterrissent
+      // 4. downlink : un faisceau vers le champ Binary, les bits y atterrissent.
+      //    Le message d'aide « octet incomplet » de l'app est masqué pendant
+      //    l'écriture bit à bit (il clignoterait), puis restauré.
+      const binMsg = document.querySelector('[data-msg-for="bin"]');
+      if (binMsg) binMsg.style.visibility = 'hidden';
       setField(bin, '', true);
       const targets = charTargets(bin, value);
       const DSPREAD = reduced ? 500 : 2400, DDUR = reduced ? 300 : 800, M = targets.length;
