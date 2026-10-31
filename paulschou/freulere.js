@@ -6,17 +6,23 @@
  * revient ailleurs. Si la souris survole la tête, elle reste visible tant que
  * le survol dure (sinon elle est quasi impossible à attraper).
  *
- * Clic sur la tête → une animation. Trois prototypes :
- *   rain : pluie de têtes (canvas, gravité, rebonds, fondu)
- *   type : la tête vole jusqu'au champ TEXT et y tape un message ; les autres
- *          champs se convertissent en direct. Elle efface ensuite et l'état
- *          d'origine est restauré à l'identique (valeurs, classes, curseur).
- *          Une frappe clavier ou un clic dans un champ interrompt tout.
- *   bits : la tête se désintègre en 0/1 aspirés par le champ Binary
+ * Clic sur la tête → une animation. Prototypes :
+ *   rain     : pluie de têtes (canvas, gravité, rebonds, fondu)
+ *   type     : la tête vole jusqu'au champ TEXT et y tape un message
+ *   bits     : la tête se désintègre en 0/1 aspirés par le champ Binary
+ *   encode   : la tête se défait ligne par ligne, chaque bit atterrit à sa
+ *              place dans Binary ; l'app décode « coucou freulere » en direct
+ *   relay    : les bits remplissent Binary puis sautent de champ en champ
+ *              (BIN → HEX → DEC → B64 → TEXT) en changeant de forme et de couleur
+ *   portrait : « coucou freulere » est tapé, puis son binaire quitte le champ
+ *              Binary pour dessiner le visage de freulere et y retourne
  *
- * Choix du prototype : ?egg=rain | ?egg=type | ?egg=bits (le premier délai
- * passe alors à 1 s pour tester). Sans paramètre, les prototypes s'enchaînent
- * à chaque clic.
+ * Les animations qui écrivent dans les champs restaurent ensuite l'état
+ * d'origine à l'identique (valeurs, classes, curseur). Une frappe clavier ou un
+ * clic dans un champ interrompt tout et restaure immédiatement.
+ *
+ * Choix du prototype : ?egg=<nom> (le premier délai passe alors à 1 s pour
+ * tester). Sans paramètre : encode, relay, portrait, bits à tour de rôle.
  *
  * Contraintes : rien n'est chargé avant les 10 s, overlay en
  * pointer-events:none (seule la tête est cliquable), animations sur transform
@@ -27,7 +33,8 @@
   'use strict';
 
   const params = new URLSearchParams(location.search);
-  const EFFECT_NAMES = ['rain', 'type', 'bits'];
+  const EFFECT_NAMES = ['rain', 'type', 'bits', 'encode', 'relay', 'portrait'];
+  const ROTATION = ['encode', 'relay', 'portrait', 'bits']; // sans ?egg, enchaînés à chaque clic
   const forced = EFFECT_NAMES.includes(params.get('egg')) ? params.get('egg') : null;
 
   const CFG = {
@@ -114,6 +121,7 @@
       user-select: none; -webkit-user-select: none; -webkit-user-drag: none; -webkit-tap-highlight-color: transparent;
       transform-origin: 50% 30%; filter: drop-shadow(0 3px 8px rgba(0, 0, 0, .18)); }
     .fz-canvas { position: absolute; left: 0; top: 0; }
+    .fz-halo { position: absolute; border-radius: 50%; background: radial-gradient(closest-side, rgba(245,245,245,.94) 60%, rgba(245,245,245,0)); }
     .fz-fly { position: absolute; left: 0; top: 0; width: 64px; height: 64px; will-change: transform; }
     .fz-fly img { display: block; width: 100%; height: 100%; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, .2)); }
   `;
@@ -161,7 +169,7 @@
   let peekCtl = null;
   let effectPromise = null;
   let hovered = false;
-  let effectIndex = Math.floor(Math.random() * EFFECT_NAMES.length);
+  let effectIndex = 0;
 
   async function peekOnce() {
     const ctl = new AbortController();
@@ -211,8 +219,10 @@
     anchor.style.visibility = 'hidden';
     hovered = false;
 
-    let name = forced || EFFECT_NAMES[effectIndex++ % EFFECT_NAMES.length];
-    if (name === 'type' && !isInView(document.getElementById('text-input'))) name = 'rain';
+    let name = forced || ROTATION[effectIndex++ % ROTATION.length];
+    // les animations qui écrivent dans les champs ont besoin de les voir à l'écran
+    const NEEDS = { type: ['text-input'], encode: ['binary-input'], portrait: ['text-input', 'binary-input'] };
+    if (NEEDS[name] && !NEEDS[name].every(id => isInView(document.getElementById(id)))) name = name === 'type' ? 'rain' : 'bits';
     try {
       await EFFECTS[name](origin);
     } catch (err) {
@@ -304,14 +314,14 @@
   ];
 
   function snapshot() {
-    const fields = [...document.querySelectorAll('.converter-grid textarea')].map(el => [el, el.value]);
+    const fields = [...document.querySelectorAll('.converter-grid textarea')].map(el => [el, el.value, el.style.cssText, el.placeholder]);
     const panels = [...document.querySelectorAll('.converter-grid .panel')].map(el => [el, el.className]);
     const active = document.activeElement;
     const sel = active && active.tagName === 'TEXTAREA'
       ? { el: active, start: active.selectionStart, end: active.selectionEnd, dir: active.selectionDirection }
       : null;
     return () => {
-      fields.forEach(([el, v]) => { el.value = v; });
+      fields.forEach(([el, v, css, ph]) => { el.value = v; el.style.cssText = css; el.placeholder = ph; });
       panels.forEach(([el, cls]) => { el.className = cls; });
       if (sel && document.activeElement === sel.el) sel.el.setSelectionRange(sel.start, sel.end, sel.dir);
     };
@@ -492,7 +502,411 @@
     });
   }
 
-  const EFFECTS = { rain, type, bits };
+  // =====================================================================
+  // Famille « bits + type » : les glyphes atterrissent dans les vrais champs
+  // =====================================================================
+  const MSG = 'coucou freulere';
+  const FIELDS = { text: 'text-input', dec: 'decimal-input', bin: 'binary-input', hex: 'hex-input', b64: 'base64-input' };
+  const ENC = {
+    text: s => s,
+    dec: s => [...s].map(c => c.charCodeAt(0).toString().padStart(3, '0')).join(' '),
+    bin: s => [...s].map(c => c.charCodeAt(0).toString(2).padStart(8, '0')).join(' '),
+    hex: s => [...s].map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join(' '),
+    b64: s => btoa(unescape(encodeURIComponent(s))),
+  };
+  const ALPHABET = {
+    text: 'abcdefghijklmnopqrstuvwxyz',
+    dec: '0123456789',
+    bin: '01',
+    hex: '0123456789abcdef',
+    b64: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/',
+  };
+  const field = k => document.getElementById(FIELDS[k]);
+  const panelOf = k => field(k) && field(k).closest('.panel');
+
+  function parseColor(str) {
+    str = (str || '').trim();
+    if (str[0] === '#') {
+      const h = str.length === 4 ? str.slice(1).split('').map(c => c + c).join('') : str.slice(1);
+      return [0, 2, 4].map(i => parseInt(h.substr(i, 2), 16));
+    }
+    const m = str.match(/\d+(\.\d+)?/g);
+    return m ? m.slice(0, 3).map(Number) : [51, 51, 51];
+  }
+  const cssVar = name => parseColor(getComputedStyle(document.documentElement).getPropertyValue(name));
+  const formatColor = k => cssVar('--color-' + k);
+  const mix = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
+
+  function setField(ta, value, fire) {
+    if (ta.value === value) return;
+    ta.value = value;
+    if (fire) ta.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  // Snapshot + annulation : une touche clavier ou un clic dans un champ
+  // interrompt l'animation et restaure immédiatement l'état d'origine.
+  function session() {
+    const restore = snapshot();
+    const s = { aborted: false, restored: false };
+    const doRestore = () => { if (!s.restored) { s.restored = true; restore(); } };
+    const abort = () => { if (!s.aborted) { s.aborted = true; doRestore(); } };
+    const onKey = () => abort();
+    const onPointer = e => { if (e.target && e.target.tagName === 'TEXTAREA') abort(); };
+    document.addEventListener('keydown', onKey, true);
+    document.addEventListener('pointerdown', onPointer, true);
+    s.end = () => {
+      document.removeEventListener('keydown', onKey, true);
+      document.removeEventListener('pointerdown', onPointer, true);
+      doRestore();
+    };
+    s.sleep = ms => new Promise(r => {
+      const t0 = performance.now();
+      const tick = now => (s.aborted || now - t0 >= ms ? r() : requestAnimationFrame(tick));
+      requestAnimationFrame(tick);
+    });
+    return s;
+  }
+
+  // Boucle rAF interruptible : fn(now) renvoie false pour s'arrêter.
+  function frames(sess, fn) {
+    return new Promise(resolve => {
+      const step = now => {
+        if (sess.aborted || fn(now) === false) resolve();
+        else requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+  }
+
+  function glyphCanvas() {
+    const cv = makeCanvas();
+    cv.font = '';
+    cv.clear = () => {
+      cv.ctx.setTransform(1, 0, 0, 1, 0, 0);
+      cv.ctx.clearRect(0, 0, cv.c.width, cv.c.height);
+      cv.ctx.setTransform(cv.dpr, 0, 0, cv.dpr, 0, 0);
+      cv.ctx.textAlign = 'center';
+      cv.ctx.textBaseline = 'middle';
+    };
+    cv.glyph = (ch, x, y, size, weight, col, alpha) => {
+      const f = `${weight} ${Math.round(size * 2) / 2}px Consolas, Monaco, "Courier New", monospace`;
+      if (f !== cv.font) { cv.font = f; cv.ctx.font = f; }
+      cv.ctx.globalAlpha = alpha;
+      cv.ctx.fillStyle = `rgb(${col[0] | 0},${col[1] | 0},${col[2] | 0})`;
+      cv.ctx.fillText(ch, x, y);
+    };
+    cv.clear();
+    return cv;
+  }
+
+  // Position écran du centre de chaque caractère (hors espaces) qu'aurait
+  // `value` dans le textarea, via un miroir invisible aux mêmes styles.
+  function charTargets(ta, value) {
+    const cs = getComputedStyle(ta);
+    const m = document.createElement('div');
+    ['boxSizing', 'width', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+      'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth', 'borderTopStyle',
+      'borderRightStyle', 'borderBottomStyle', 'borderLeftStyle', 'fontFamily', 'fontSize', 'fontWeight',
+      'fontStyle', 'lineHeight', 'letterSpacing', 'wordSpacing', 'textTransform', 'tabSize',
+    ].forEach(p => { m.style[p] = cs[p]; });
+    Object.assign(m.style, { position: 'absolute', left: '0', top: '0', visibility: 'hidden', whiteSpace: 'pre-wrap', overflowWrap: 'break-word' });
+    const spans = [];
+    for (let i = 0; i < value.length; i++) {
+      const s = document.createElement('span');
+      s.textContent = value[i];
+      m.appendChild(s);
+      spans.push(s);
+    }
+    layer.appendChild(m);
+    const mr = m.getBoundingClientRect(), tr = ta.getBoundingClientRect();
+    const size = parseFloat(cs.fontSize), col = parseColor(cs.color);
+    const out = [];
+    spans.forEach((s, i) => {
+      if (value[i] === ' ') return;
+      const r = s.getBoundingClientRect();
+      out.push({
+        i, ch: value[i], size, col, weight: cs.fontWeight, w: r.width, h: r.height,
+        x: tr.left + r.left - mr.left + r.width / 2 - ta.scrollLeft,
+        y: tr.top + r.top - mr.top + r.height / 2 - ta.scrollTop,
+      });
+    });
+    m.remove();
+    return out;
+  }
+
+  // Échantillonne la tête en grille : une cellule opaque = un glyphe 0/1 coloré.
+  function headCells(cx, cy, grid, cell, bitsSeq, contrast = 1) {
+    const off = document.createElement('canvas');
+    off.width = off.height = grid;
+    const octx = off.getContext('2d', { willReadFrequently: true });
+    octx.drawImage(headImg, 0, 0, grid, grid);
+    const data = octx.getImageData(0, 0, grid, grid).data;
+    const out = [];
+    for (let gy = 0; gy < grid; gy++) {
+      for (let gx = 0; gx < grid; gx++) {
+        const i = (gy * grid + gx) * 4;
+        if (data[i + 3] < 110) continue;
+        out.push({
+          x: cx - (grid * cell) / 2 + gx * cell + cell / 2,
+          y: cy - (grid * cell) / 2 + gy * cell + cell / 2,
+          ch: bitsSeq ? bitsSeq[out.length % bitsSeq.length] : (Math.random() < 0.5 ? '0' : '1'),
+          col: [0, 1, 2].map(k => (contrast === 1 ? data[i + k] : clamp((data[i + k] - 140) * contrast + 120, 0, 255))),
+          size: cell * 1.45, weight: 700,
+        });
+      }
+    }
+    return out;
+  }
+
+  function clampCenter(p, size) {
+    return {
+      x: clamp(p.x, size / 2 + 12, innerWidth - size / 2 - 12),
+      y: clamp(p.y, size / 2 + 12, innerHeight - size / 2 - 12),
+    };
+  }
+
+  function glowPanel(panel, rgb) {
+    if (!panel) return;
+    const c = `${rgb[0]},${rgb[1]},${rgb[2]}`;
+    panel.animate([
+      { boxShadow: `0 2px 8px rgba(0,0,0,.06), 0 0 0 0 rgba(${c},0)` },
+      { boxShadow: `0 2px 8px rgba(0,0,0,.06), 0 0 0 4px rgba(${c},.35)`, offset: 0.3 },
+      { boxShadow: `0 2px 8px rgba(0,0,0,.06), 0 0 0 0 rgba(${c},0)` },
+    ], { duration: 1200, easing: 'ease-out' });
+  }
+
+  // Moteur commun : chaque glyphe vole d'une source vers une cible. Les cibles
+  // sont atteintes dans l'ordre, étalées sur `spread` ms ; onLand(j) est appelé
+  // à l'arrivée de la cible j (c'est là qu'on écrit dans le vrai champ).
+  function flyGlyphs(cv, sess, o) {
+    const { sources, targets, spread, dur } = o;
+    const N = sources.length, M = targets.length, P = Math.max(N, M);
+    const arriveAt = j => (M > 1 ? (j / (M - 1)) * spread : 0) + dur;
+    const arcMax = o.arc == null ? 70 : o.arc;
+    const parts = [];
+    for (let p = 0; p < P; p++) {
+      const j = Math.floor((p * M) / P);
+      const d = dur * rand(0.7, 1);
+      parts.push({ s: sources[Math.floor((p * N) / P)], t: targets[j], start: arriveAt(j) - d, d, arc: rand(-arcMax, arcMax), seed: Math.random() * 100 | 0 });
+    }
+    const flashes = [];
+    let next = 0;
+    const end = arriveAt(M - 1) + 300;
+    const t0 = performance.now();
+    return frames(sess, now => {
+      const el = now - t0;
+      while (next < M && el >= arriveAt(next)) {
+        if (o.onLand) o.onLand(next);
+        if (o.flash) flashes.push({ t: targets[next], at: el });
+        next++;
+      }
+      cv.clear();
+      const ctx = cv.ctx;
+      let fadeIn = 1;
+      if (o.intro) {
+        fadeIn = clamp(el / 240, 0, 1);
+        if (fadeIn < 1) {
+          ctx.globalAlpha = 1 - fadeIn;
+          ctx.drawImage(headImg, o.intro.x - o.intro.size / 2, o.intro.y - o.intro.size / 2, o.intro.size, o.intro.size);
+        }
+      }
+      if (o.flash) {
+        for (const f of flashes) {
+          const k = (el - f.at) / 280;
+          if (k >= 1) continue;
+          ctx.globalAlpha = 0.35 * (1 - k);
+          ctx.fillStyle = `rgb(${o.flash.join(',')})`;
+          ctx.fillRect(f.t.x - f.t.w / 2 - 1, f.t.y - f.t.h / 2, f.t.w + 2, f.t.h);
+        }
+      }
+      for (const p of parts) {
+        let g, alpha = 1;
+        if (el < p.start) {
+          if (!o.drawWaiting) continue;
+          g = p.s;
+          alpha = fadeIn;
+        } else if (el >= p.start + p.d) {
+          if (!o.drawLanded) continue;
+          g = p.t;
+        } else {
+          const u = (el - p.start) / p.d, e = easeInOutCubic(u), bump = Math.sin(u * Math.PI);
+          let ch;
+          if (o.alphabet) ch = u < 0.25 ? p.s.ch : u < 0.75 ? o.alphabet[(p.seed + Math.floor(el / 60)) % o.alphabet.length] : p.t.ch;
+          else ch = u < 0.5 ? p.s.ch : p.t.ch;
+          const col = o.mid
+            ? (u < 0.5 ? mix(p.s.col, o.mid, u * 2) : mix(o.mid, p.t.col, (u - 0.5) * 2))
+            : mix(p.s.col, p.t.col, u);
+          g = {
+            x: lerp(p.s.x, p.t.x, e) + bump * p.arc * 0.5,
+            y: lerp(p.s.y, p.t.y, e) - bump * Math.abs(p.arc),
+            ch, col, size: lerp(p.s.size, p.t.size, e), weight: u < 0.5 ? p.s.weight : p.t.weight,
+          };
+          alpha = fadeIn;
+        }
+        cv.glyph(g.ch, g.x, g.y, g.size, g.weight, g.col, alpha);
+      }
+      return el < end;
+    });
+  }
+
+  // Efface plusieurs champs en parallèle, depuis la fin.
+  function eraseFields(sess, tas, ms, fire) {
+    const start = tas.map(t => t.value);
+    return tween(reduced ? 150 : ms, t => {
+      if (sess.aborted) return;
+      tas.forEach((ta, k) => setField(ta, start[k].slice(0, Math.round(start[k].length * (1 - t))), fire));
+    });
+  }
+
+  // ---------- prototype 4 : encode ----------
+  // La tête se défait ligne par ligne ; chaque bit atterrit à sa place dans le
+  // champ Binary et y devient du vrai texte. L'app décode en direct : le message
+  // apparaît lettre par lettre dans TEXT.
+  async function encode(origin) {
+    const bin = field('bin');
+    const sess = session();
+    const cv = glyphCanvas();
+    try {
+      const value = ENC.bin(MSG);
+      setField(bin, '', true);
+      const GRID = 22, CELL = 7, SIZE = GRID * CELL;
+      const c = clampCenter(origin, SIZE);
+      const targets = charTargets(bin, value);
+      await flyGlyphs(cv, sess, {
+        sources: headCells(c.x, c.y, GRID, CELL), targets,
+        spread: reduced ? 500 : 2400, dur: reduced ? 300 : 800,
+        intro: { x: c.x, y: c.y, size: SIZE }, drawWaiting: true,
+        mid: formatColor('bin'), flash: formatColor('bin'),
+        onLand: j => setField(bin, value.slice(0, targets[j].i + 1), true),
+      });
+      if (sess.aborted) return;
+      glowPanel(panelOf('text'), formatColor('text'));
+      await sess.sleep(2400);
+      if (!sess.aborted) await eraseFields(sess, [bin], 700, true);
+    } finally {
+      cv.c.remove();
+      sess.end();
+    }
+  }
+
+  // ---------- prototype 5 : relay ----------
+  // Les bits remplissent Binary, puis sautent de champ en champ
+  // (BIN → HEX → DEC → B64 → TEXT) en changeant de caractères et de couleur.
+  async function relay(origin) {
+    const ORDER = ['bin', 'hex', 'dec', 'b64', 'text'];
+    const sess = session();
+    const cv = glyphCanvas();
+    try {
+      ORDER.forEach(k => {
+        setField(field(k), '', false);
+        field(k).placeholder = '';
+        panelOf(k).classList.remove('is-source', 'is-invalid');
+      });
+      const GRID = 22, CELL = 7, SIZE = GRID * CELL;
+      const c = clampCenter(origin, SIZE);
+      let sources = headCells(c.x, c.y, GRID, CELL);
+      for (let k = 0; k < ORDER.length && !sess.aborted; k++) {
+        const key = ORDER[k], ta = field(key), value = ENC[key](MSG);
+        ORDER.forEach(o => panelOf(o).classList.toggle('is-source', o === key));
+        const targets = charTargets(ta, value);
+        await flyGlyphs(cv, sess, {
+          sources, targets,
+          spread: reduced ? 200 : k === 0 ? 1300 : 650, dur: reduced ? 250 : k === 0 ? 750 : 600,
+          intro: k === 0 ? { x: c.x, y: c.y, size: SIZE } : null,
+          drawWaiting: k === 0, alphabet: k === 0 ? null : ALPHABET[key],
+          mid: formatColor(key), flash: formatColor(key), arc: k === 0 ? 70 : 50,
+          onLand: j => setField(ta, value.slice(0, targets[j].i + 1), false),
+        });
+        sources = targets;
+      }
+      if (sess.aborted) return;
+      glowPanel(panelOf('text'), formatColor('text'));
+      await sess.sleep(2200);
+      if (!sess.aborted) await eraseFields(sess, ORDER.map(field), 650, false);
+    } finally {
+      cv.c.remove();
+      sess.end();
+    }
+  }
+
+  // ---------- prototype 6 : portrait ----------
+  // Le message est tapé dans TEXT, l'app le convertit ; puis le binaire quitte
+  // le champ Binary pour dessiner le visage de freulere, qui scintille, et
+  // retourne dans le champ.
+  async function portrait(origin) {
+    const txt = field('text'), bin = field('bin');
+    const sess = session();
+    const cv = glyphCanvas();
+    let halo = null;
+    try {
+      setField(txt, '', true);
+      for (const ch of MSG) {
+        if (sess.aborted) return;
+        setField(txt, txt.value + ch, true);
+        await sess.sleep(reduced ? 10 : rand(45, 95));
+      }
+      await sess.sleep(450);
+      if (sess.aborted) return;
+
+      const value = bin.value;
+      const binGlyphs = charTargets(bin, value);
+      const seq = binGlyphs.map(g => g.ch);
+      // le visage se forme au centre de l'écran, sur un halo pour rester lisible
+      const GRID = 28, CELL = clamp(Math.round(Math.min(innerWidth, innerHeight) / 80), 6, 9), SIZE = GRID * CELL;
+      const c = { x: innerWidth / 2, y: innerHeight / 2 };
+      const face = headCells(c.x, c.y, GRID, CELL, seq, 1.6);
+      halo = document.createElement('div');
+      halo.className = 'fz-halo';
+      Object.assign(halo.style, { left: c.x - SIZE + 'px', top: c.y - SIZE + 'px', width: SIZE * 2 + 'px', height: SIZE * 2 + 'px' });
+      layer.insertBefore(halo, cv.c);
+      halo.animate([{ opacity: 0 }, { opacity: 1 }], { duration: reduced ? 150 : 1000, easing: 'ease-out' });
+
+      bin.style.color = 'transparent';
+      await flyGlyphs(cv, sess, {
+        sources: binGlyphs, targets: face,
+        spread: reduced ? 200 : 900, dur: reduced ? 300 : 900,
+        drawWaiting: true, drawLanded: true, mid: formatColor('bin'), arc: 90,
+      });
+      if (sess.aborted) return;
+
+      // le visage « vit » : bits qui basculent + ligne de scan
+      const t0 = performance.now(), HOLD = reduced ? 600 : 1800;
+      const top = c.y - SIZE / 2, scanCol = formatColor('bin');
+      await frames(sess, now => {
+        const el = now - t0;
+        cv.clear();
+        const scanY = top + ((el % 900) / 900) * (SIZE + 40) - 20;
+        for (const g of face) {
+          if (Math.random() < 0.02) g.ch = g.ch === '0' ? '1' : '0';
+          const k = clamp(1 - Math.abs(g.y - scanY) / 14, 0, 1);
+          cv.glyph(g.ch, g.x, g.y, g.size * (1 + 0.25 * k), g.weight, mix(g.col, scanCol, k * 0.8), 1);
+        }
+        return el < HOLD;
+      });
+      if (sess.aborted) return;
+
+      halo.animate([{ opacity: 1 }, { opacity: 0 }], { duration: reduced ? 150 : 700, easing: 'ease-in', fill: 'forwards' });
+      await flyGlyphs(cv, sess, {
+        sources: face, targets: binGlyphs,
+        spread: reduced ? 200 : 700, dur: reduced ? 300 : 800,
+        drawWaiting: true, drawLanded: true, mid: formatColor('bin'), arc: 60,
+      });
+      bin.style.color = '';
+      cv.clear();
+      if (sess.aborted) return;
+      await sess.sleep(500);
+      for (let n = txt.value.length - 1; n >= 0 && !sess.aborted; n--) {
+        setField(txt, txt.value.slice(0, n), true);
+        await sess.sleep(28);
+      }
+    } finally {
+      if (halo) halo.remove();
+      cv.c.remove();
+      sess.end();
+    }
+  }
+
+  const EFFECTS = { rain, type, bits, encode, relay, portrait };
 
   // ---------- boucle principale ----------
   async function main() {
