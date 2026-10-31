@@ -260,22 +260,34 @@ async function test(file) {
     }
   });
 
-  await t('dark mode follows the system, light mode unchanged', async () => {
-    const colors = async scheme => {
-      const c = await browser.newContext({ colorScheme: scheme });
-      const p = await c.newPage();
-      await p.goto(url);
-      const r = await p.evaluate(() => ({
-        body: getComputedStyle(document.body).backgroundColor,
-        panel: getComputedStyle(document.querySelector('.panel[data-format="hex"]')).backgroundColor,
-        text: getComputedStyle(document.body).color,
-      }));
-      await c.close();
-      return r;
-    };
-    assert.deepStrictEqual(await colors('light'), { body: 'rgb(245, 245, 245)', panel: 'rgb(255, 255, 255)', text: 'rgb(51, 51, 51)' });
-    const dark = await colors('dark');
-    assert.deepStrictEqual(dark, { body: 'rgb(22, 23, 27)', panel: 'rgb(31, 32, 38)', text: 'rgb(228, 228, 232)' });
+  await t('light by default (even with a dark system), dark toggle saved', async () => {
+    const LIGHT = { body: 'rgb(245, 245, 245)', panel: 'rgb(255, 255, 255)', text: 'rgb(51, 51, 51)' };
+    const DARK = { body: 'rgb(22, 23, 27)', panel: 'rgb(31, 32, 38)', text: 'rgb(228, 228, 232)' };
+    const colors = p => p.evaluate(() => ({
+      body: getComputedStyle(document.body).backgroundColor,
+      panel: getComputedStyle(document.querySelector('.panel[data-format="hex"]')).backgroundColor,
+      text: getComputedStyle(document.body).color,
+    }));
+    const c = await browser.newContext({ colorScheme: 'dark' });
+    const p = await c.newPage();
+    await p.goto(url);
+    await p.evaluate(() => localStorage.clear());
+    await p.reload();
+    const toggle = p.locator('#theme-toggle');
+    assert.deepStrictEqual(await colors(p), LIGHT);
+    assert.strictEqual(await toggle.getAttribute('aria-pressed'), 'false');
+    await toggle.click();
+    await p.waitForTimeout(300); // let color transitions finish
+    assert.deepStrictEqual(await colors(p), DARK);
+    assert.strictEqual(await toggle.getAttribute('aria-pressed'), 'true');
+    await p.reload();
+    assert.deepStrictEqual(await colors(p), DARK, 'dark kept after reload');
+    await toggle.click();
+    await p.waitForTimeout(300);
+    assert.deepStrictEqual(await colors(p), LIGHT);
+    await p.reload();
+    assert.deepStrictEqual(await colors(p), LIGHT, 'light kept after reload');
+    await c.close();
   });
 
   assert.deepStrictEqual(errors, [], 'page errors');

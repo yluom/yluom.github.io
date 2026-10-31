@@ -13,7 +13,7 @@ node regression.js /tmp/baseline.html ../index.html
 
 # Features: separators, round trip, persistence (reload and browser restart),
 # copy buttons, Clipboard API / localStorage fallbacks, error messages and hints,
-# size counters, Clear all / Undo clear, accessible names, dark mode
+# size counters, Clear all / Undo clear, accessible names, theme toggle
 node features.js ../index.html
 ```
 
