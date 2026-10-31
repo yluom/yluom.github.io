@@ -1,4 +1,9 @@
 <!DOCTYPE html>
+<!--
+  Paulschou Converter: live ASCII / Decimal / Binary / Hex / Base64 converter.
+  Copy buttons on every panel; one output separator setting (space or none) for
+  Decimal, Binary and Hex, saved in localStorage (issue #3). Tests: tests/README.md
+-->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -236,6 +241,142 @@
         .credits .sep {
             color: var(--border);
         }
+
+        /* ---- Issue #3: copy buttons + separator options ---- */
+        .panel-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .icon-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+            height: 24px;
+            min-width: 24px;
+            padding: 0 0.3rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: var(--panel-bg);
+            color: var(--text-light);
+            font: inherit;
+            font-size: 0.7rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .icon-btn:hover:not(:disabled) {
+            border-color: var(--panel-color, var(--border-hover));
+            color: var(--panel-color, var(--text));
+        }
+
+        .icon-btn:focus-visible,
+        .seg input:focus-visible + span {
+            outline: 2px solid var(--panel-color, var(--color-text));
+            outline-offset: 1px;
+        }
+
+        .icon-btn:disabled {
+            opacity: 0.4;
+            cursor: default;
+        }
+
+        .icon-btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .icon-btn .icon-check { display: none; }
+        .icon-btn.is-copied { border-color: var(--color-bin); color: var(--color-bin); }
+        .icon-btn.is-copied .icon-copy { display: none; }
+        .icon-btn.is-copied .icon-check { display: inline; }
+
+        .seg {
+            display: inline-flex;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .seg label {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .seg input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .seg span {
+            display: block;
+            padding: 0 0.45rem;
+            line-height: 22px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            background: var(--panel-bg);
+            white-space: pre;
+            transition: all 0.15s ease;
+        }
+
+        .seg label + label span {
+            border-left: 1px solid var(--border);
+        }
+
+        .seg input:checked + span {
+            background: var(--panel-color);
+            color: white;
+        }
+
+        .sep-warning {
+            margin-top: 0.4rem;
+            font-size: 0.75rem;
+            color: #b7791f;
+        }
+
+        .toolbar {
+            --panel-color: var(--color-text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+            margin-bottom: 1rem;
+            font-size: 0.8rem;
+            color: var(--text-light);
+        }
+
+        .toolbar .seg span {
+            font-family: inherit;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0 0.7rem;
+            line-height: 26px;
+        }
+
+        .icon-btn { padding: 0 0.5rem; }
+
+        @media (pointer: coarse) {
+            .icon-btn { height: 32px; min-width: 32px; }
+            .seg span { line-height: 30px; padding: 0 0.6rem; }
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
     </style>
 </head>
 <body>
@@ -245,12 +386,27 @@
             <p class="intro">Live encode & decode — type in any field</p>
         </header>
 
+        <div class="toolbar">
+            <span class="toolbar-label" id="sep-all-label">Separator in Decimal · Binary · Hex</span>
+            <div class="seg" role="radiogroup" aria-labelledby="sep-all-label">
+                <label><input type="radio" name="sep-all" value="space" data-sep-for="dec bin hex"><span>Space</span></label>
+                <label><input type="radio" name="sep-all" value="none" data-sep-for="dec bin hex"><span>None</span></label>
+            </div>
+        </div>
+
         <main class="converter-grid">
             <!-- Text Input -->
             <div class="panel panel-text" data-format="text">
                 <div class="panel-header">
                     <span class="panel-title"><a href="https://en.wikipedia.org/wiki/ASCII" target="_blank">TEXT</a></span>
-                    <span class="panel-badge">TXT</span>
+                    <div class="panel-actions">
+                        <span class="panel-badge">TXT</span>
+                        <button type="button" class="icon-btn" data-copy="text" aria-label="Copy Text" title="Copy Text">
+                            <svg class="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+                            <svg class="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>
+                            <span class="btn-label">Copy</span>
+                        </button>
+                    </div>
                 </div>
                 <textarea id="text-input" placeholder="Enter your text here..."></textarea>
             </div>
@@ -259,38 +415,71 @@
             <div class="panel" data-format="dec">
                 <div class="panel-header">
                     <span class="panel-title"><a href="https://en.wikipedia.org/wiki/ASCII" target="_blank">ASCII Decimal</a></span>
-                    <span class="panel-badge">DEC</span>
+                    <div class="panel-actions">
+                        <span class="panel-badge">DEC</span>
+                        <button type="button" class="icon-btn" data-copy="dec" aria-label="Copy ASCII Decimal" title="Copy ASCII Decimal">
+                            <svg class="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+                            <svg class="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>
+                            <span class="btn-label">Copy</span>
+                        </button>
+                    </div>
                 </div>
                 <textarea id="decimal-input" placeholder="065 083 067 073 073..."></textarea>
+                <p class="sep-warning" data-warn-for="dec" hidden></p>
             </div>
 
             <!-- Binary -->
             <div class="panel" data-format="bin">
                 <div class="panel-header">
                     <span class="panel-title"><a href="https://en.wikipedia.org/wiki/Binary_code" target="_blank">Binary</a></span>
-                    <span class="panel-badge">BIN</span>
+                    <div class="panel-actions">
+                        <span class="panel-badge">BIN</span>
+                        <button type="button" class="icon-btn" data-copy="bin" aria-label="Copy Binary" title="Copy Binary">
+                            <svg class="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+                            <svg class="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>
+                            <span class="btn-label">Copy</span>
+                        </button>
+                    </div>
                 </div>
                 <textarea id="binary-input" placeholder="01001000 01100101 01101100..."></textarea>
+                <p class="sep-warning" data-warn-for="bin" hidden></p>
             </div>
 
             <!-- Hexadecimal -->
             <div class="panel" data-format="hex">
                 <div class="panel-header">
                     <span class="panel-title"><a href="https://en.wikipedia.org/wiki/Hexadecimal" target="_blank">Hexadecimal</a></span>
-                    <span class="panel-badge">HEX</span>
+                    <div class="panel-actions">
+                        <span class="panel-badge">HEX</span>
+                        <button type="button" class="icon-btn" data-copy="hex" aria-label="Copy Hexadecimal" title="Copy Hexadecimal">
+                            <svg class="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+                            <svg class="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>
+                            <span class="btn-label">Copy</span>
+                        </button>
+                    </div>
                 </div>
                 <textarea id="hex-input" placeholder="48 65 6c 6c 6f..."></textarea>
+                <p class="sep-warning" data-warn-for="hex" hidden></p>
             </div>
 
             <!-- Base64 -->
             <div class="panel" data-format="b64">
                 <div class="panel-header">
                     <span class="panel-title"><a href="https://en.wikipedia.org/wiki/Base64" target="_blank">Base64</a></span>
-                    <span class="panel-badge">B64</span>
+                    <div class="panel-actions">
+                        <span class="panel-badge">B64</span>
+                        <button type="button" class="icon-btn" data-copy="b64" aria-label="Copy Base64" title="Copy Base64">
+                            <svg class="icon-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+                            <svg class="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>
+                            <span class="btn-label">Copy</span>
+                        </button>
+                    </div>
                 </div>
                 <textarea id="base64-input" placeholder="SGVsbG8gV29ybGQ="></textarea>
             </div>
         </main>
+
+        <div class="sr-only" aria-live="polite" id="copy-status"></div>
 
         <footer>
             <div class="credits">
@@ -314,6 +503,26 @@
         };
 
         const panels = document.querySelectorAll('.panel');
+
+        // ---- Separator preferences (issue #3) ----
+        const SEP = { space: ' ', none: '' };
+        const SEP_FORMATS = ['dec', 'bin', 'hex'];
+        const SEP_STORAGE_KEY = 'paulschou.separators';
+        const prefs = loadPrefs();
+
+        function loadPrefs() {
+            const p = { dec: 'space', bin: 'space', hex: 'space' };
+            try {
+                const saved = JSON.parse(localStorage.getItem(SEP_STORAGE_KEY));
+                if (saved) SEP_FORMATS.forEach(f => { if (saved[f] in SEP) p[f] = saved[f]; });
+            } catch (e) { /* storage unavailable: keep defaults */ }
+            return p;
+        }
+
+        function savePrefs() {
+            try { localStorage.setItem(SEP_STORAGE_KEY, JSON.stringify(prefs)); }
+            catch (e) { /* ignore */ }
+        }
         let currentSource = null;
 
         function setSource(format) {
@@ -347,22 +556,23 @@
         }
 
         // Encoding functions
-        function textToDecimal(text) {
+        // `sep` defaults to a space so the original output is unchanged.
+        function textToDecimal(text, sep = ' ') {
             return Array.from(text).map(c =>
                 c.charCodeAt(0).toString().padStart(3, '0')
-            ).join(' ');
+            ).join(sep);
         }
 
-        function textToBinary(text) {
+        function textToBinary(text, sep = ' ') {
             return Array.from(text).map(c =>
                 c.charCodeAt(0).toString(2).padStart(8, '0')
-            ).join(' ');
+            ).join(sep);
         }
 
-        function textToHex(text) {
+        function textToHex(text, sep = ' ') {
             return Array.from(text).map(c =>
                 c.charCodeAt(0).toString(16).padStart(2, '0')
-            ).join(' ');
+            ).join(sep);
         }
 
         function textToBase64(text) {
@@ -376,7 +586,15 @@
         // Decoding functions
         function decimalToText(decimal) {
             if (!decimal.trim()) return '';
-            const codes = decimal.replace(/\D/g, ' ').trim().split(/\s+/);
+            const tokens = decimal.replace(/\D/g, ' ').trim().split(/\s+/);
+            // A char code has at most 5 digits (65535). Tokens of 6+ digits can
+            // only be codes written without separator ("072101108"): read them
+            // as 3-digit groups, ignoring an incomplete trailing group.
+            const codes = [];
+            tokens.forEach(t => {
+                if (t.length < 6) { codes.push(t); return; }
+                for (let i = 0; i + 3 <= t.length; i += 3) codes.push(t.substring(i, i + 3));
+            });
             return codes.map(c => {
                 const n = parseInt(c, 10);
                 return n > 0 ? String.fromCharCode(n) : '';
@@ -421,9 +639,9 @@
         // Update all fields from text
         function updateFromText(text, exclude) {
             if (exclude !== 'text') inputs.text.value = text;
-            if (exclude !== 'dec') inputs.dec.value = text ? textToDecimal(text) : '';
-            if (exclude !== 'bin') inputs.bin.value = text ? textToBinary(text) : '';
-            if (exclude !== 'hex') inputs.hex.value = text ? textToHex(text) : '';
+            if (exclude !== 'dec') inputs.dec.value = text ? textToDecimal(text, SEP[prefs.dec]) : '';
+            if (exclude !== 'bin') inputs.bin.value = text ? textToBinary(text, SEP[prefs.bin]) : '';
+            if (exclude !== 'hex') inputs.hex.value = text ? textToHex(text, SEP[prefs.hex]) : '';
             if (exclude !== 'b64') inputs.b64.value = text ? textToBase64(text) : '';
         }
 
@@ -484,6 +702,112 @@
                 if (allEmpty) setSource(null);
             });
         });
+        // ---- Separator controls (issue #3) ----
+        // Any element with data-sep-for="dec bin hex" drives those formats:
+        // radio (value="space"|"none") or checkbox (checked = space).
+        const ENCODERS = { dec: textToDecimal, bin: textToBinary, hex: textToHex };
+        // Above these codes, output without separator can't be split back reliably.
+        const MAX_UNAMBIGUOUS = { dec: 999, bin: 255, hex: 255 };
+        const sepControls = document.querySelectorAll('[data-sep-for]');
+
+        function syncSepControls() {
+            sepControls.forEach(el => {
+                const modes = new Set(el.dataset.sepFor.split(' ').map(f => prefs[f]));
+                const mode = modes.size === 1 ? [...modes][0] : null;
+                if (el.type === 'checkbox') {
+                    el.checked = mode === 'space';
+                    el.indeterminate = mode === null;
+                } else {
+                    el.checked = el.value === mode;
+                }
+            });
+        }
+
+        function setSeparator(format, mode) {
+            prefs[format] = mode;
+            // Never rewrite what the user is typing: only re-render outputs.
+            if (currentSource !== format) {
+                const text = inputs.text.value;
+                inputs[format].value = text ? ENCODERS[format](text, SEP[mode]) : '';
+            }
+        }
+
+        sepControls.forEach(el => {
+            el.addEventListener('change', () => {
+                const mode = el.type === 'checkbox' ? (el.checked ? 'space' : 'none') : el.value;
+                el.dataset.sepFor.split(' ').forEach(f => setSeparator(f, mode));
+                savePrefs();
+                syncSepControls();
+                refreshUi();
+            });
+        });
+
+        function refreshWarnings() {
+            document.querySelectorAll('[data-warn-for]').forEach(el => {
+                const f = el.dataset.warnFor;
+                const max = MAX_UNAMBIGUOUS[f];
+                const ambiguous = prefs[f] === 'none' && currentSource !== f &&
+                    Array.from(inputs.text.value).some(c => c.charCodeAt(0) > max);
+                el.hidden = !ambiguous;
+                el.textContent = ambiguous
+                    ? `Contains characters above ${max}: without separator this can't be decoded back reliably.`
+                    : '';
+            });
+        }
+
+        // ---- Copy to clipboard (issue #3) ----
+        const copyButtons = document.querySelectorAll('[data-copy]');
+        const copyStatus = document.getElementById('copy-status');
+
+        async function copyToClipboard(str) {
+            if (navigator.clipboard && window.isSecureContext) {
+                try { await navigator.clipboard.writeText(str); return true; }
+                catch (e) { /* fall through */ }
+            }
+            const tmp = document.createElement('textarea');
+            tmp.value = str;
+            tmp.setAttribute('readonly', '');
+            tmp.style.position = 'fixed';
+            tmp.style.opacity = '0';
+            document.body.appendChild(tmp);
+            tmp.select();
+            let ok = false;
+            try { ok = document.execCommand('copy'); } catch (e) { /* ignore */ }
+            tmp.remove();
+            return ok;
+        }
+
+        copyButtons.forEach(btn => {
+            let timer;
+            btn.addEventListener('click', async () => {
+                const f = btn.dataset.copy;
+                const name = btn.closest('.panel').querySelector('.panel-title').textContent.trim();
+                const ok = await copyToClipboard(inputs[f].value);
+                btn.classList.toggle('is-copied', ok);
+                const label = btn.querySelector('.btn-label');
+                if (label) label.textContent = ok ? 'Copied' : 'Failed';
+                copyStatus.textContent = ok ? `${name} copied to clipboard` : `Could not copy ${name}`;
+                clearTimeout(timer);
+                timer = setTimeout(() => {
+                    btn.classList.remove('is-copied');
+                    if (label) label.textContent = 'Copy';
+                }, 1500);
+            });
+        });
+
+        function refreshCopyButtons() {
+            copyButtons.forEach(btn => { btn.disabled = !inputs[btn.dataset.copy].value; });
+        }
+
+        function refreshUi() {
+            refreshCopyButtons();
+            refreshWarnings();
+        }
+
+        // Runs after the per-field handlers above (event bubbling order).
+        document.addEventListener('input', refreshUi);
+        syncSepControls();
+        refreshUi();
     </script>
 </body>
 </html>
