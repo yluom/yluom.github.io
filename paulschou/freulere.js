@@ -17,8 +17,9 @@
  *   portrait : « coucou freulere » est tapé, puis son binaire quitte le champ
  *              Binary pour dessiner le visage de freulere et y retourne
  *   remix    : la tête vole au centre en grandissant, un scan la change en
- *              binaire, les bits dansent puis alimentent le champ Binary ;
- *              l'app décode « coucou freulere » dans TEXT
+ *              binaire ; un satellite Iridium passe, reçoit les bits, fait un
+ *              flare et les renvoie dans le champ Binary ; l'app décode
+ *              « coucou freulere » dans TEXT
  *
  * Les animations qui écrivent dans les champs restaurent ensuite l'état
  * d'origine à l'identique (valeurs, classes, curseur). Une frappe clavier ou un
@@ -125,6 +126,17 @@
       transform-origin: 50% 30%; filter: drop-shadow(0 3px 8px rgba(0, 0, 0, .18)); }
     .fz-canvas { position: absolute; left: 0; top: 0; }
     .fz-big { position: absolute; left: 0; top: 0; will-change: transform, clip-path; filter: drop-shadow(0 6px 14px rgba(0, 0, 0, .18)); }
+    .fz-sat { position: absolute; left: 0; top: 0; will-change: transform; }
+    .fz-sat svg { position: absolute; left: -36px; top: -23.5px; overflow: visible; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .2)); }
+    .fz-hud { position: absolute; left: 0; top: 26px; transform: translateX(-50%); white-space: nowrap;
+      font: 600 10px/1.5 Consolas, Monaco, "Courier New", monospace; letter-spacing: .04em; color: #555;
+      background: rgba(255, 255, 255, .88); border: 1px solid #e0e0e0; border-radius: 4px; padding: 0 6px; }
+    .fz-flare { position: absolute; left: 13px; top: 13px; width: 96px; height: 96px; margin: -48px 0 0 -48px; opacity: 0; border-radius: 50%;
+      background: radial-gradient(circle, #fff 0 5%, rgba(255, 214, 90, .95) 11%, rgba(255, 190, 40, .45) 28%, rgba(255, 190, 40, 0) 62%); }
+    .fz-flare::before, .fz-flare::after { content: ''; position: absolute; left: 50%; top: 50%; width: 170px; height: 2px; margin: -1px 0 0 -85px;
+      background: linear-gradient(90deg, transparent, rgba(255, 176, 0, .95), transparent); }
+    .fz-flare::after { transform: rotate(90deg); }
+    .fz-dim { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at 50% 15%, rgba(15, 17, 21, .08), rgba(15, 17, 21, .22)); }
     .fz-halo { position: absolute; border-radius: 50%; background: radial-gradient(closest-side, rgba(245,245,245,.94) 60%, rgba(245,245,245,0)); }
     .fz-fly { position: absolute; left: 0; top: 0; width: 64px; height: 64px; will-change: transform; }
     .fz-fly img { display: block; width: 100%; height: 100%; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, .2)); }
@@ -687,6 +699,27 @@
     };
   }
 
+  // Satellite Iridium stylisé (corps doré, panneaux solaires, 3 antennes
+  // MMA, les panneaux réfléchissants à l'origine des « Iridium flares »).
+  function makeSatellite() {
+    const el = document.createElement('div');
+    el.className = 'fz-sat';
+    el.innerHTML = `<svg viewBox="-40 -26 80 52" width="72" height="47" aria-hidden="true" stroke-linejoin="round">
+      <path d="M-14 -6H-7M7 -6H14" stroke="#8b96a3" stroke-width="1.4"/>
+      <g fill="#2b3a5c" stroke="#6f86b3" stroke-width=".7">
+        <rect x="-38" y="-11" width="24" height="10" rx="1"/><rect x="14" y="-11" width="24" height="10" rx="1"/>
+      </g>
+      <path d="M-30 -11v10M-22 -11v10M22 -11v10M30 -11v10M-38 -6h24M14 -6h24" stroke="#6f86b3" stroke-width=".45"/>
+      <path d="M-6 -20H6L7.5 10H-7.5Z" fill="#cfa84e" stroke="#8a6d2a" stroke-width=".7"/>
+      <path d="M0 -20V10" stroke="#ead08a" stroke-width=".7"/>
+      <g fill="#e4e9ef" stroke="#8b96a3" stroke-width=".7">
+        <path d="M-7.5 2L-17 16L-13 18L-5 5Z"/><path d="M7.5 2L17 16L13 18L5 5Z"/><path d="M-3.5 6H3.5L3 20H-3Z"/>
+      </g>
+    </svg><div class="fz-flare"></div><div class="fz-hud"></div>`;
+    layer.appendChild(el);
+    return el;
+  }
+
   // Halo clair derrière un visage en glyphes, pour qu'il reste lisible sur l'app.
   function makeHalo(c, size, before) {
     const el = document.createElement('div');
@@ -734,6 +767,7 @@
       }
       cv.clear();
       const ctx = cv.ctx;
+      if (o.onFrame) o.onFrame(el, ctx);
       let fadeIn = 1;
       if (o.intro) {
         fadeIn = clamp(el / 240, 0, 1);
@@ -934,22 +968,23 @@
     }
   }
 
-  // ---------- prototype 7 : remix (encode × portrait) ----------
+  // ---------- prototype 7 : remix (encode × portrait × Iridium) ----------
   // La tête rejoint le centre en grandissant, un scan la change en binaire
-  // (les vrais bits de « coucou freulere »), les bits dansent, puis ils
-  // alimentent le champ Binary un par un ; l'app décode le message dans TEXT.
+  // (les vrais bits de « coucou freulere »). Un satellite Iridium passe :
+  // les bits montent vers lui (uplink), il fait un « Iridium flare », puis
+  // les renvoie par un faisceau dans le champ Binary (downlink) ; l'app
+  // décode le message dans TEXT.
   async function remix(origin) {
     const bin = field('bin');
     const sess = session();
     const cv = glyphCanvas();
-    let halo = null, big = null;
+    let halo = null, big = null, sat = null, dim = null;
     try {
       const GRID = 28, CELL = clamp(Math.round(Math.min(innerWidth, innerHeight) / 80), 6, 9), SIZE = GRID * CELL;
       const c = { x: innerWidth / 2, y: innerHeight / 2 };
       const top = c.y - SIZE / 2, left = c.x - SIZE / 2;
       const value = ENC.bin(MSG);
       const face = headCells(c.x, c.y, GRID, CELL, value.replace(/ /g, ''), 1.6);
-      face.forEach(g => { g.home = g.ch; });
       const green = formatColor('bin');
 
       // 1. la tête vole au centre en grandissant
@@ -973,7 +1008,7 @@
 
       // 2. scan de haut en bas : la photo devient binaire
       const SCAN = reduced ? 250 : 900;
-      let t0 = performance.now();
+      const t0 = performance.now();
       await frames(sess, now => {
         const t = clamp((now - t0) / SCAN, 0, 1);
         const scanY = top - 12 + (SIZE + 24) * t;
@@ -993,53 +1028,149 @@
       big = null;
       if (sess.aborted) return;
 
-      // 3. les bits dansent : vague, sauts sur le temps, balancement, pirouette
-      const DANCE = reduced ? 600 : 2800, BEAT = 400, SPIN0 = 1200, SPIN = 800;
-      let lastBeat = -1;
-      t0 = performance.now();
+      // 3. passage d'un satellite Iridium : uplink des bits, flare, downlink
+      const W = innerWidth, H = innerHeight, BITS = value.replace(/ /g, '').length;
+      const orbitTop = Math.max(52, H * 0.1), orbitDrop = H * 0.16;
+      const orbitAt = p => ({ x: lerp(-70, W + 70, p), y: orbitTop + orbitDrop * Math.pow(2 * p - 1, 2) });
+      const ENTER = reduced ? 300 : 900, MID = reduced ? 1600 : 6400;
+      // entrée rapide, traversée lente pendant les transferts
+      const passP = g => (g < ENTER ? 0.3 * easeOutCubic(g / ENTER) : 0.3 + 0.4 * clamp((g - ENTER) / MID, 0, 1));
+      const passT0 = performance.now();
+      sat = makeSatellite();
+      const hud = sat.querySelector('.fz-hud');
+      const say = txt => { if (hud.textContent !== txt) hud.textContent = txt; };
+      const moveSat = p => {
+        const a = orbitAt(p), b = orbitAt(p + 0.002);
+        sat.style.transform = `translate(${a.x}px, ${a.y}px)`;
+        sat.firstElementChild.style.transform = `rotate(${(Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI}deg)`;
+        return a;
+      };
+      const drawOrbit = alpha => {
+        const ctx = cv.ctx;
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = '#9aa0a8';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 6]);
+        ctx.beginPath();
+        for (let i = 0; i <= 48; i++) {
+          const o = orbitAt(i / 48);
+          if (i) ctx.lineTo(o.x, o.y); else ctx.moveTo(o.x, o.y);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+      };
+      moveSat(0);
+      say('IRIDIUM · SBD');
+
+      // uplink : les bits quittent le visage (du haut vers le bas) vers l'antenne
+      const UP_START = ENTER * 0.6, UP_SPREAD = reduced ? 300 : 1300, UP_DUR = reduced ? 300 : 650;
+      face.forEach((g, k) => { g.launch = UP_START + (k / face.length) * UP_SPREAD + rand(0, 120); });
+      halo.animate([{ opacity: 1 }, { opacity: 0 }], { duration: UP_SPREAD + UP_DUR, delay: UP_START, easing: 'ease-in', fill: 'forwards' });
       await frames(sess, now => {
-        const el = now - t0, s = el / 1000;
-        const env = clamp(el / 300, 0, 1) * clamp((DANCE - el) / 500, 0, 1);
-        const beat = Math.floor(el / BEAT), pulse = Math.exp(-((el % BEAT) / BEAT) * 5);
-        if (beat !== lastBeat) {
-          lastBeat = beat;
-          const settle = el > DANCE - 600;
-          for (const g of face) g.ch = settle ? g.home : (Math.random() < 0.15 ? (g.ch === '0' ? '1' : '0') : g.ch);
-        }
-        const sway = Math.sin(s * TAU * 0.6) * 16 * env;
-        const spin = reduced ? 1 : Math.cos(easeInOutCubic(clamp((el - SPIN0) / SPIN, 0, 1)) * TAU);
+        const g0 = now - passT0;
+        const s = moveSat(passP(g0));
         cv.clear();
+        drawOrbit(0.4 * clamp(g0 / 400, 0, 1));
+        let received = 0;
         for (const g of face) {
-          const jumper = (g.gy + beat) % 2 === 0;
-          const wave = Math.sin(s * TAU * 1.3 + g.gx * 0.5) * 5;
-          const jump = jumper ? pulse * 8 : 0;
-          const x = c.x + (g.x + sway - c.x) * spin;
-          const y = g.y + (wave - jump) * env;
-          const k = pulse * env * (jumper ? 1 : 0.25);
-          cv.glyph(g.ch, x, y, g.size * (1 + 0.35 * k), g.weight, mix(g.col, green, k * 0.7), 1);
+          const u = (g0 - g.launch) / UP_DUR;
+          if (u < 0) { cv.glyph(g.ch, g.x, g.y, g.size, g.weight, g.col, 1); continue; }
+          if (u >= 1) { received++; continue; }
+          const e = easeInCubic(u);
+          cv.glyph(g.ch, lerp(g.x, s.x, e), lerp(g.y, s.y + 14, e), lerp(g.size, 5, e), g.weight,
+            mix(g.col, green, Math.min(1, u * 2)), 1 - 0.6 * e);
         }
-        return el < DANCE;
+        if (received > 0) {
+          const k = (g0 % 320) / 320;
+          cv.ctx.globalAlpha = 0.5 * (1 - k);
+          cv.ctx.strokeStyle = `rgb(${green.join(',')})`;
+          cv.ctx.beginPath();
+          cv.ctx.arc(s.x, s.y + 14, 5 + k * 16, 0, TAU);
+          cv.ctx.stroke();
+        }
+        say(`IRIDIUM · SBD ↑ ${Math.round((received / face.length) * BITS)}/${BITS} bits`);
+        return received < face.length;
       });
-      face.forEach(g => { g.ch = g.home; });
       if (sess.aborted) return;
 
-      // 4. les bits alimentent le champ Binary, l'app décode dans TEXT
-      setField(bin, '', true);
-      halo.animate([{ opacity: 1 }, { opacity: 0 }], { duration: reduced ? 150 : 1600, easing: 'ease-in', fill: 'forwards' });
-      const targets = charTargets(bin, value);
-      await flyGlyphs(cv, sess, {
-        sources: face, targets,
-        spread: reduced ? 500 : 2400, dur: reduced ? 300 : 850,
-        drawWaiting: true, mid: green, flash: green, arc: 80,
-        onLand: j => setField(bin, value.slice(0, targets[j].i + 1), true),
+      // flare : le reflet du soleil sur une antenne, signature des Iridium
+      say('IRIDIUM · FLARE');
+      dim = document.createElement('div');
+      dim.className = 'fz-dim';
+      layer.insertBefore(dim, cv.c);
+      const FLARE = reduced ? 300 : 900;
+      dim.animate([{ opacity: 0 }, { opacity: 1, offset: 0.35 }, { opacity: 0 }], { duration: FLARE, easing: 'ease-in-out', fill: 'forwards' });
+      sat.querySelector('.fz-flare').animate([
+        { opacity: 0, transform: 'scale(.1) rotate(0deg)' },
+        { opacity: 1, transform: 'scale(1.25) rotate(20deg)', offset: 0.35 },
+        { opacity: 0, transform: 'scale(.3) rotate(45deg)' },
+      ], { duration: FLARE, easing: 'ease-out' });
+      let t0f = performance.now();
+      await frames(sess, now => {
+        moveSat(passP(now - passT0));
+        cv.clear();
+        drawOrbit(0.4);
+        return now - t0f < FLARE;
       });
       if (sess.aborted) return;
+
+      // downlink : un faisceau vers le champ Binary, les bits y atterrissent
+      setField(bin, '', true);
+      const targets = charTargets(bin, value);
+      const DSPREAD = reduced ? 500 : 2400, DDUR = reduced ? 300 : 800, M = targets.length;
+      const dlT0 = performance.now() + 16;
+      const sources = targets.map((t, j) => {
+        const s = orbitAt(passP(dlT0 + (M > 1 ? (j / (M - 1)) * DSPREAD : 0) + DDUR * 0.15 - passT0));
+        return { x: s.x, y: s.y + 14, ch: t.ch, col: green, size: 5, weight: 700 };
+      });
+      const tr = bin.getBoundingClientRect();
+      let landed = 0;
+      await flyGlyphs(cv, sess, {
+        sources, targets, spread: DSPREAD, dur: DDUR, mid: green, flash: green, arc: 6,
+        onLand: j => { landed = j + 1; setField(bin, value.slice(0, targets[j].i + 1), true); },
+        onFrame: (el, ctx) => {
+          const s = moveSat(passP(performance.now() - passT0));
+          drawOrbit(0.4);
+          const env = clamp(el / 300, 0, 1) * clamp((DSPREAD + DDUR - el) / 400, 0, 1);
+          if (env > 0) {
+            const grad = ctx.createLinearGradient(0, s.y, 0, tr.top);
+            grad.addColorStop(0, `rgba(${green.join(',')},.28)`);
+            grad.addColorStop(1, `rgba(${green.join(',')},.05)`);
+            ctx.globalAlpha = env;
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.moveTo(s.x - 2, s.y + 14);
+            ctx.lineTo(tr.left + 4, tr.top + 2);
+            ctx.lineTo(tr.right - 4, tr.top + 2);
+            ctx.lineTo(s.x + 2, s.y + 14);
+            ctx.closePath();
+            ctx.fill();
+          }
+          say(`IRIDIUM · SBD ↓ ${Math.round((landed / M) * BITS)}/${BITS} bits`);
+        },
+      });
+      if (sess.aborted) return;
+
+      // fin de passage : perte du signal, le satellite sort de l'écran
       glowPanel(panelOf('text'), formatColor('text'));
-      await sess.sleep(2400);
+      say('IRIDIUM · LOS');
+      const pEnd = passP(performance.now() - passT0), EXIT = reduced ? 300 : 900;
+      t0f = performance.now();
+      await frames(sess, now => {
+        const t = clamp((now - t0f) / EXIT, 0, 1);
+        moveSat(lerp(pEnd, 1.02, easeInCubic(t)));
+        cv.clear();
+        drawOrbit(0.4 * (1 - t));
+        return t < 1;
+      });
+      cv.clear();
+      await sess.sleep(1700);
       if (!sess.aborted) await eraseFields(sess, [bin], 700, true);
     } finally {
       if (big) big.remove();
       if (halo) halo.remove();
+      if (sat) sat.remove();
+      if (dim) dim.remove();
       cv.c.remove();
       sess.end();
     }
