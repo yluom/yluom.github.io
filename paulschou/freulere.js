@@ -6,15 +6,22 @@
  * revient ailleurs. Si la souris survole la tête, elle reste visible tant que
  * le survol dure (sinon elle est quasi impossible à attraper).
  *
- * Pendant le peek, un « appât » donne envie de cliquer (prototypes, au choix
- * avec ?lure=glitch|ressort|orbite ; sans paramètre ils tournent à tour de rôle) :
+ * Pendant le peek, un « appât » donne envie de cliquer, tiré au hasard parmi
+ * glitch, ressort et orbite (jamais deux fois le même d'affilée). ?lure=<nom>
+ * en force un, ?lure=tous tire parmi tous, prototypes compris :
  *   - glitch : la tête parasite (aberration chromatique, tremblements) et
  *     passe une fraction de seconde en binaire, comme si le signal décrochait ;
  *   - ressort : la tête jaillit sur un ressort de boîte à surprise, fait un
  *     tour complet façon hibou, puis redescend ;
  *   - orbite : un mini satellite Iridium tourne autour de la tête (il passe
  *     derrière) en émettant des pings, et une pastille « 1 » de notification
- *     apparaît sur le front.
+ *     apparaît sur le front ;
+ *   - clones (prototype) : deux autres freulere sortent du même bord, l'un
+ *     en miroir, puis replongent ;
+ *   - psst (prototype) : une bulle de pensée tape « psst » en binaire, puis le
+ *     décode comme le ferait le convertisseur ;
+ *   - ballon (prototype) : la tête gonfle comme un ballon, tremble, puis se
+ *     dégonfle en partant dans tous les sens avant de reprendre sa place.
  * Un clic pendant l'appât fonctionne partout sur la tête, même en l'air.
  * Avec prefers-reduced-motion, seule la pastille apparaît, sans mouvement.
  *
@@ -171,6 +178,14 @@
     .fz-mini { position: absolute; left: 0; top: 0; width: 0; height: 0; will-change: transform; }
     .fz-mini svg { position: absolute; left: -14px; top: -9px; width: 28px; height: 18px; overflow: visible; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .25)); }
     .fz-ping { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; border: 1.5px solid currentColor; opacity: 0; }
+    .fz-clone { position: absolute; top: 0; height: auto; transform-origin: 50% 100%; will-change: transform; }
+    .fz-think { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+    .fz-dot { position: absolute; border-radius: 50%; background: var(--panel-bg, #fff); border: 1px solid var(--border, #e0e0e0);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, .12); transform: scale(0); }
+    .fz-bubble { position: absolute; left: 0; top: 0; box-sizing: border-box; padding: 6px 10px; border-radius: 14px; white-space: pre; text-align: center;
+      background: var(--panel-bg, #fff); border: 1px solid var(--border, #e0e0e0); box-shadow: 0 3px 10px rgba(0, 0, 0, .15);
+      font: 700 10px/1.35 Consolas, Monaco, "Courier New", monospace; color: var(--color-bin, #3a9a5b); opacity: 0; }
+    .fz-bubble.is-text { font-size: 17px; line-height: 1.6; color: var(--text, #333); }
     .fz-badge { position: absolute; min-width: 20px; height: 20px; margin: -10px 0 0 -10px; padding: 0 5px; box-sizing: border-box; border-radius: 10px;
       background: #e5484d; color: #fff; border: 2px solid var(--panel-bg, #fff); box-shadow: 0 2px 6px rgba(0, 0, 0, .3);
       font: 700 11px/16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; transform: scale(0); }
@@ -271,7 +286,7 @@
   function grab(e) {
     if (!peekCtl || peekCtl.signal.aborted) return;
     e.preventDefault();
-    const extra = lure && lure.pose ? lure.pose() : null;
+    const extra = lure && lure.pose ? lure.pose(e.currentTarget) : null;
     stopLure();
     effectPromise = caught(extra);
     peekCtl.abort();
@@ -297,7 +312,7 @@
     return {
       x: spot.x + lx * Math.cos(r) - ly * Math.sin(r),
       y: spot.y + lx * Math.sin(r) + ly * Math.cos(r),
-      size: HEAD_IN_PEEK.size * w,
+      size: HEAD_IN_PEEK.size * w * (x.scale || 1),
       rot: spot.r + x.rot,
     };
   }
@@ -499,6 +514,161 @@
     };
   }
 
+  // Position d'un point du repère du wrap (px) à l'écran.
+  function toScreenPt(lx, ly) {
+    const w = wrap.offsetWidth, h = wrap.offsetHeight;
+    const m = new DOMMatrixReadOnly(getComputedStyle(wrap).transform);
+    const x = m.m41 + lx, y = -h + m.m42 + ly, r = (spot.r * Math.PI) / 180;
+    return { x: spot.x + x * Math.cos(r) - y * Math.sin(r), y: spot.y + x * Math.sin(r) + y * Math.cos(r) };
+  }
+
+  // 4. Clones : deux autres freulere sortent du même bord, l'un en miroir,
+  //    regardent un peu partout, puis replongent.
+  function lureClones(g) {
+    // places libres à côté de la tête, du côté où il y a de l'écran
+    const free = off => {
+      const p = toScreenPt(g.w / 2 + off, g.h * 0.52 - g.w * 0.5); // une demi-largeur à l'intérieur de l'écran
+      return p.x > 0 && p.x < innerWidth && p.y > 0 && p.y < innerHeight;
+    };
+    const offs = [1.15, -1.15, 2.3, -2.3].map(k => k * g.w).filter(free).slice(0, 2);
+    const HID = g.h * 0.6;
+    const clones = offs.map((off, i) => {
+      const el = lureEl('img', 'fz-lure fz-clone fz-hit');
+      el.src = peekImg.src;
+      el.alt = '';
+      el.draggable = false;
+      Object.assign(el.style, { left: off + 'px', width: g.w + 'px' });
+      hittable(el);
+      const c = { el, off, mirror: i === 0, tilt: (i ? 1 : -1) * rand(7, 13), at: 120 + i * 220, out: 1050 + i * 150, ty: HID, rot: 0 };
+      el.style.transform = `translateY(${HID}px)`;
+      return c;
+    });
+    const tl = timeline(1450, el => {
+      for (const c of clones) {
+        const up = clamp((el - c.at) / 260, 0, 1), down = clamp((el - c.out) / 200, 0, 1);
+        const pop = up < 1 ? 1 - Math.pow(1 - up, 3) * Math.cos(up * 5) : 1; // petit dépassement
+        c.ty = HID * (1 - pop) + HID * easeInCubic(down);
+        // ils regardent à gauche, à droite, puis vers la vraie tête
+        c.rot = c.tilt * Math.sin(clamp((el - c.at) / 700, 0, 1) * Math.PI * 1.5);
+        c.el.style.transform = `translateY(${c.ty}px) rotate(${c.rot}deg)${c.mirror ? ' scaleX(-1)' : ''}`;
+      }
+    });
+    return {
+      done: tl.done, els: clones.map(c => c.el), stop: tl.stop,
+      pose: target => {
+        const c = clones.find(k => k.el === target);
+        if (!c) return null;
+        // centre de la tête du clone, après rotation autour de son pied
+        const hx = (c.mirror ? g.w - g.cx : g.cx) - g.w / 2, hy = g.cy - g.h, r = (c.rot * Math.PI) / 180;
+        return {
+          dx: c.off + g.w / 2 + hx * Math.cos(r) - hy * Math.sin(r) - g.cx,
+          dy: c.ty + g.h + hx * Math.sin(r) + hy * Math.cos(r) - g.cy,
+          rot: c.rot,
+        };
+      },
+    };
+  }
+
+  // 5. Psst : une bulle de pensée tape « psst » en binaire, bit à bit, puis
+  //    le décode comme le convertisseur. La bulle reste à l'endroit quel que
+  //    soit le bord.
+  function lurePsst(g) {
+    const WORD = 'psst';
+    const bytes = [...WORD].map(ch => ch.charCodeAt(0).toString(2).padStart(8, '0'));
+    const lines = [bytes.slice(0, 2).join(' '), bytes.slice(2).join(' ')];
+    const think = lureEl('div', 'fz-think');
+    const bubble = document.createElement('div');
+    bubble.className = 'fz-bubble fz-hit';
+    hittable(bubble);
+    bubble.textContent = lines.join('\n');
+    think.appendChild(bubble);
+    const bw = bubble.offsetWidth, bh = bubble.offsetHeight;
+    Object.assign(bubble.style, { width: bw + 'px', height: bh + 'px', marginLeft: -bw / 2 + 'px', marginTop: -bh / 2 + 'px' });
+    // distance au sommet du crâne selon l'encombrement de la bulle vue du bord
+    const r = (spot.r * Math.PI) / 180;
+    const reach = Math.abs(Math.sin(r)) * bw / 2 + Math.abs(Math.cos(r)) * bh / 2;
+    const top = g.cy - g.size * 0.47;
+    const ax = g.cx + g.size * 0.12;
+    Object.assign(think.style, { left: ax + 'px', top: top - 34 - reach + 'px' });
+    bubble.style.transform = `rotate(${-spot.r}deg)`;
+    const dots = [[6, 4], [18, 6], [30, 8]].map(([d, sz]) => {
+      const el = lureEl('div', 'fz-dot');
+      Object.assign(el.style, { left: lerp(g.cx, ax, d / 34) - sz / 2 + 'px', top: top - d - sz / 2 + 'px', width: sz + 'px', height: sz + 'px' });
+      return el;
+    });
+    const anims = [];
+    dots.forEach((d, i) => anims.push(d.animate([{ transform: 'scale(0)' }, { transform: 'scale(1)' }], { duration: 160, delay: i * 90, easing: 'ease-out', fill: 'forwards' })));
+    anims.push(bubble.animate([
+      { opacity: 0, transform: `rotate(${-spot.r}deg) scale(.4)` },
+      { opacity: 1, transform: `rotate(${-spot.r}deg) scale(1)` },
+    ], { duration: 220, delay: 270, easing: 'ease-out', fill: 'forwards' }));
+    const total = bytes.join('').length;
+    let shown = -1, decoded = false;
+    const tl = timeline(1500, el => {
+      if (el < 1000) {
+        const n = Math.floor(clamp((el - 330) / 620, 0, 1) * total);
+        if (n !== shown) {
+          shown = n;
+          let k = 0;
+          bubble.textContent = lines.map(l => [...l].map(ch => (ch === ' ' ? ' ' : k++ < n ? ch : '·')).join('')).join('\n');
+        }
+      } else if (!decoded) {
+        decoded = true;
+        bubble.classList.add('is-text');
+        bubble.textContent = WORD + ' !';
+        anims.push(bubble.animate([
+          { transform: `rotate(${-spot.r}deg) scale(1)` },
+          { transform: `rotate(${-spot.r - 8}deg) scale(1.15)` },
+          { transform: `rotate(${-spot.r + 6}deg) scale(1.1)` },
+          { transform: `rotate(${-spot.r}deg) scale(1)` },
+        ], { duration: 360, easing: 'ease-out', composite: 'replace' }));
+      }
+    });
+    return { done: tl.done, els: [think, ...dots], stop: () => { tl.stop(); anims.forEach(a => a.cancel()); } };
+  }
+
+  // 6. Ballon : la tête gonfle en gigotant, tremble au bord de l'éclatement,
+  //    puis se dégonfle en partant dans tous les sens et reprend sa place.
+  function lureBallon(g) {
+    const head = lureEl('img', 'fz-lure fz-hit', g);
+    head.src = headImg.src;
+    head.alt = '';
+    head.draggable = false;
+    hittable(head);
+    peekImg.classList.add('is-headless');
+    const BIG = 1.9;
+    let dx = 0, dy = 0, rot = 0, sc = 1;
+    const tl = timeline(1500, el => {
+      let sx, sy;
+      if (el < 650) {                                        // gonfle en gigotant
+        sc = lerp(1, BIG, easeOutCubic(el / 650));
+        const j = 0.07 * Math.sin(el / 40) * (1 - el / 650);
+        sx = sc * (1 + j); sy = sc * (1 - j);
+        dx = 0; rot = 4 * Math.sin(el / 60);
+      } else if (el < 900) {                                 // au bord de l'éclatement
+        sc = lerp(BIG, BIG + 0.1, (el - 650) / 250);
+        sx = sy = sc;
+        dx = rand(-1.5, 1.5); rot = rand(-3, 3);
+      } else if (el < 1350) {                                // pfffrrt
+        const t = (el - 900) / 450, k = 1 - t;
+        sc = lerp(BIG + 0.1, 1, easeOutCubic(t));
+        sx = sc * (1 + 0.12 * Math.sin(el / 25) * k); sy = sc * (1 - 0.12 * Math.sin(el / 25) * k);
+        dx = g.w * 0.9 * Math.sin(t * 9) * k;
+        rot = 720 * easeOutCubic(t);
+      } else {                                               // reprend sa place
+        sc = sx = sy = 1; dx = 0; rot = 0;
+      }
+      // le menton reste au bord : la tête monte à mesure qu'elle gonfle
+      dy = -(sc - 1) * g.size * 0.5;
+      head.style.transform = `translate(${dx}px, ${dy}px) rotate(${rot}deg) scale(${sx}, ${sy})`;
+    });
+    return {
+      done: tl.done, els: [head],
+      pose: () => ({ dx, dy, rot: rot % 360, scale: sc }),
+      stop: () => { tl.stop(); peekImg.classList.remove('is-headless'); },
+    };
+  }
+
   // Un appât qui plante (canvas illisible en file://…) ne doit pas casser le peek.
   function startLure() {
     const before = new Set(wrap.children);
@@ -512,14 +682,23 @@
     }
   }
 
-  const LURES = { glitch: lureGlitch, ressort: lureRessort, orbite: lureOrbite };
-  const LURE_ORDER = Object.keys(LURES);
-  let lureTurn = 0;
+  const LURES = {
+    glitch: lureGlitch, ressort: lureRessort, orbite: lureOrbite,
+    clones: lureClones, psst: lurePsst, ballon: lureBallon, // prototypes
+  };
+  const POOL = ['glitch', 'ressort', 'orbite'];
+  let lastLure = null;
   function nextLure() {
     const forced = params.get('lure');
-    if (reduced) return lureOrbite; // sans mouvement : seulement la pastille
-    if (LURES[forced]) return LURES[forced];
-    return LURES[LURE_ORDER[lureTurn++ % LURE_ORDER.length]];
+    let name;
+    if (reduced) name = 'orbite'; // sans mouvement : seulement la pastille
+    else if (LURES[forced]) name = forced;
+    else {
+      const pool = forced === 'tous' ? Object.keys(LURES) : POOL;
+      do { name = pool[Math.floor(Math.random() * pool.length)]; } while (name === lastLure && pool.length > 1);
+    }
+    lastLure = name;
+    return LURES[name];
   }
 
   function caught(extra) {
