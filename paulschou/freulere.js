@@ -2,9 +2,21 @@
  * Easter egg « freulere » pour le Paulschou Converter.
  *
  * Après 10 s passées sur la page (onglet visible), la tête de freulere fait un
- * sneak peek de 0,5 s depuis un coin ou un bord aléatoire, disparaît 5 s, puis
+ * sneak peek de 1,6 s depuis un coin ou un bord aléatoire, disparaît 3 s, puis
  * revient ailleurs. Si la souris survole la tête, elle reste visible tant que
  * le survol dure (sinon elle est quasi impossible à attraper).
+ *
+ * Pendant le peek, un « appât » donne envie de cliquer (prototypes, au choix
+ * avec ?lure=glitch|ressort|orbite ; sans paramètre ils tournent à tour de rôle) :
+ *   - glitch : la tête parasite (aberration chromatique, tremblements) et
+ *     passe une fraction de seconde en binaire, comme si le signal décrochait ;
+ *   - ressort : la tête jaillit sur un ressort de boîte à surprise, fait un
+ *     tour complet façon hibou, puis redescend ;
+ *   - orbite : un mini satellite Iridium tourne autour de la tête (il passe
+ *     derrière) en émettant des pings, et une pastille « 1 » de notification
+ *     apparaît sur le front.
+ * Un clic pendant l'appât fonctionne partout sur la tête, même en l'air.
+ * Avec prefers-reduced-motion, seule la pastille apparaît, sans mouvement.
  *
  * Clic sur la tête → transmission Iridium, d'un seul tenant :
  *   1. la tête se détache du corps et vole au centre en grandissant pendant
@@ -33,8 +45,8 @@
 
   const CFG = {
     firstDelay: params.has('egg') ? 1000 : 10000, // temps visible avant la 1re apparition
-    peekHold: 500,          // durée du sneak peek
-    peekGap: 5000,          // pause entre deux apparitions
+    peekHold: 1600,         // durée du sneak peek (au moins la durée de l'appât)
+    peekGap: 3000,          // pause entre deux apparitions
     slide: 220,             // durée d'entrée / sortie
     afterEffectGap: 15000,  // pause après l'animation
   };
@@ -152,7 +164,32 @@
     .fz-flare::before, .fz-flare::after { content: ''; position: absolute; left: 50%; top: 50%; width: 170px; height: 2px; margin: -1px 0 0 -85px;
       background: linear-gradient(90deg, transparent, rgba(255, 176, 0, .95), transparent); }
     .fz-flare::after { transform: rotate(90deg); }
+    .fz-lure { position: absolute; left: 0; top: 0; pointer-events: none; }
+    .fz-hit { pointer-events: auto; cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; -webkit-user-drag: none; }
+    img.fz-lure { filter: drop-shadow(0 3px 8px rgba(0, 0, 0, .18)); will-change: transform; }
+    .fz-spring { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+    .fz-mini { position: absolute; left: 0; top: 0; width: 0; height: 0; will-change: transform; }
+    .fz-mini svg { position: absolute; left: -14px; top: -9px; width: 28px; height: 18px; overflow: visible; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .25)); }
+    .fz-ping { position: absolute; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; border: 1.5px solid currentColor; opacity: 0; }
+    .fz-badge { position: absolute; min-width: 20px; height: 20px; margin: -10px 0 0 -10px; padding: 0 5px; box-sizing: border-box; border-radius: 10px;
+      background: #e5484d; color: #fff; border: 2px solid var(--panel-bg, #fff); box-shadow: 0 2px 6px rgba(0, 0, 0, .3);
+      font: 700 11px/16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; transform: scale(0); }
   `;
+
+  // Satellite Iridium stylisé (corps doré, panneaux solaires, 3 antennes
+  // MMA, les panneaux réfléchissants à l'origine des « Iridium flares »).
+  const SAT_SVG = `<svg viewBox="-40 -26 80 52" width="72" height="47" aria-hidden="true" stroke-linejoin="round">
+      <path d="M-14 -6H-7M7 -6H14" stroke="#8b96a3" stroke-width="1.4"/>
+      <g fill="#2b3a5c" stroke="#6f86b3" stroke-width=".7">
+        <rect x="-38" y="-11" width="24" height="10" rx="1"/><rect x="14" y="-11" width="24" height="10" rx="1"/>
+      </g>
+      <path d="M-30 -11v10M-22 -11v10M22 -11v10M30 -11v10M-38 -6h24M14 -6h24" stroke="#6f86b3" stroke-width=".45"/>
+      <path d="M-6 -20H6L7.5 10H-7.5Z" fill="#cfa84e" stroke="#8a6d2a" stroke-width=".7"/>
+      <path d="M0 -20V10" stroke="#ead08a" stroke-width=".7"/>
+      <g fill="#e4e9ef" stroke="#8b96a3" stroke-width=".7">
+        <path d="M-7.5 2L-17 16L-13 18L-5 5Z"/><path d="M7.5 2L17 16L13 18L5 5Z"/><path d="M-3.5 6H3.5L3 20H-3Z"/>
+      </g>
+    </svg>`;
 
   const layer = document.createElement('div');
   layer.className = 'fz-layer';
@@ -197,7 +234,10 @@
   // ---------- sneak peek ----------
   let peekCtl = null;
   let effectPromise = null;
-  let hovered = false;
+  let lure = null;
+  // Éléments survolés (le peek et les morceaux cliquables des appâts) : la
+  // tête reste tant que l'un d'eux est sous le pointeur.
+  const hovering = new Set();
 
   async function peekOnce() {
     const ctl = new AbortController();
@@ -208,44 +248,282 @@
     try {
       await until(animateTransform(wrap, HIDDEN, PEEK, CFG.slide, EASE_OUT), s);
       if (s.aborted) return;
-      await until(sleep(CFG.peekHold), s);
-      while (hovered && !s.aborted) {
-        await until(new Promise(r => peekImg.addEventListener('pointerleave', r, { once: true })), s);
-      }
+      lure = startLure();
+      await until(Promise.all([sleep(CFG.peekHold), lure.done]), s);
+      while (hovering.size && !s.aborted) await until(sleep(100), s);
       if (s.aborted) return;
       await until(animateTransform(wrap, PEEK, HIDDEN, CFG.slide, EASE_IN), s);
       if (!s.aborted) anchor.style.visibility = 'hidden';
     } finally {
+      stopLure();
       peekCtl = null;
     }
   }
 
-  peekImg.addEventListener('pointerenter', () => { hovered = true; });
-  peekImg.addEventListener('pointerleave', () => { hovered = false; });
-  peekImg.addEventListener('pointerdown', e => {
+  function stopLure() {
+    if (!lure) return;
+    const l = lure;
+    lure = null;
+    l.stop();
+    l.els.forEach(el => { hovering.delete(el); el.remove(); });
+  }
+
+  function grab(e) {
     if (!peekCtl || peekCtl.signal.aborted) return;
     e.preventDefault();
-    effectPromise = caught();
+    const extra = lure && lure.pose ? lure.pose() : null;
+    stopLure();
+    effectPromise = caught(extra);
     peekCtl.abort();
-  });
+  }
+
+  function hittable(el) {
+    el.addEventListener('pointerenter', () => hovering.add(el));
+    el.addEventListener('pointerleave', () => hovering.delete(el));
+    el.addEventListener('pointerdown', grab);
+    return el;
+  }
+  hittable(peekImg);
 
   // Position, taille et rotation à l'écran de la tête visible dans le peek.
-  function headPose() {
+  // `extra` : déplacement de la tête par l'appât (repère du peek, px / deg).
+  function headPose(extra) {
+    const x = extra || { dx: 0, dy: 0, rot: 0 };
     const w = wrap.offsetWidth, h = wrap.offsetHeight;
     const m = new DOMMatrixReadOnly(getComputedStyle(wrap).transform);
-    const lx = m.m41 + HEAD_IN_PEEK.x * w;
-    const ly = -h + m.m42 + HEAD_IN_PEEK.y * h;
+    const lx = m.m41 + HEAD_IN_PEEK.x * w + x.dx;
+    const ly = -h + m.m42 + HEAD_IN_PEEK.y * h + x.dy;
     const r = (spot.r * Math.PI) / 180;
     return {
       x: spot.x + lx * Math.cos(r) - ly * Math.sin(r),
       y: spot.y + lx * Math.sin(r) + ly * Math.cos(r),
       size: HEAD_IN_PEEK.size * w,
-      rot: spot.r,
+      rot: spot.r + x.rot,
     };
   }
 
-  function caught() {
-    const pose = headPose();
+  // ---------- appâts : donner envie de cliquer ----------
+  // Chaque appât reçoit la géométrie du peek (px, repère du wrap) et renvoie
+  // { done, stop, els, pose? } : `done` résout quand il est fini (la tête est
+  // revenue au repos), `stop` l'arrête net, `els` sont ses éléments (retirés
+  // au stop), `pose()` le déplacement courant de la tête.
+  function lureGeom() {
+    const w = wrap.offsetWidth, h = wrap.offsetHeight, size = HEAD_IN_PEEK.size * w;
+    return { w, h, size, cx: HEAD_IN_PEEK.x * w, cy: HEAD_IN_PEEK.y * h };
+  }
+
+  function lureEl(tag, cls, g) {
+    const el = document.createElement(tag);
+    el.className = cls;
+    if (g) Object.assign(el.style, { left: g.cx - g.size / 2 + 'px', top: g.cy - g.size / 2 + 'px', width: g.size + 'px', height: g.size + 'px' });
+    wrap.appendChild(el);
+    return el;
+  }
+
+  // Petit séquenceur : fn(el) appelée à chaque frame (el = ms écoulées)
+  // jusqu'à `duration` ou jusqu'au stop.
+  function timeline(duration, fn) {
+    let stopped = false;
+    const done = new Promise(resolve => {
+      const t0 = performance.now();
+      const step = now => {
+        if (stopped) return resolve();
+        const el = Math.min(duration, now - t0);
+        fn(el);
+        if (el < duration) requestAnimationFrame(step); else resolve();
+      };
+      requestAnimationFrame(step);
+    });
+    return { done, stop: () => { stopped = true; } };
+  }
+
+  // 1. Glitch : le signal décroche. Tremblements + aberration chromatique,
+  //    puis la tête passe en binaire (les bits de « coucou freulere ») un
+  //    instant, deux fois.
+  function lureGlitch(g) {
+    const GRID = 16, cell = g.size / GRID;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const c = lureEl('canvas', 'fz-lure fz-hit', g);
+    hittable(c);
+    c.width = c.height = Math.round(g.size * dpr);
+    c.style.opacity = '0';
+    const ctx = c.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const green = formatColor('bin');
+    const cells = headCells(g.size / 2, g.size / 2, GRID, cell, toBinary(MSG).replace(/ /g, ''));
+    ctx.font = `700 ${cell * 1.45}px Consolas, Monaco, "Courier New", monospace`;
+    for (const k of cells) {
+      ctx.fillStyle = `rgb(${mix(k.col, green, 0.45).map(v => v | 0).join(',')})`;
+      ctx.fillText(k.ch, k.x, k.y);
+    }
+    const RGB = 'drop-shadow(-3px 0 0 rgba(255, 0, 90, .8)) drop-shadow(3px 0 0 rgba(0, 210, 255, .8))';
+    const shake = [
+      { transform: 'none', filter: 'none' },
+      { transform: 'translate(-3px, 1px) skewX(6deg)', filter: RGB },
+      { transform: 'translate(4px, -1px)', filter: RGB + ' hue-rotate(90deg) saturate(3)' },
+      { transform: 'translate(-2px, 0) skewX(-8deg)', filter: RGB },
+      { transform: 'translate(2px, 1px)', filter: 'none' },
+      { transform: 'none', filter: 'none' },
+    ];
+    const anims = [];
+    const flash = on => { c.style.opacity = on ? '1' : '0'; peekImg.classList.toggle('is-headless', on); };
+    const tl = timeline(1450, el => {
+      if (!anims.length && el >= 0) anims.push(peekImg.animate(shake, { duration: 260, easing: 'steps(5, end)' }));
+      if (anims.length === 1 && el >= 820) anims.push(peekImg.animate(shake, { duration: 200, easing: 'steps(5, end)' }));
+      const bin = (el >= 200 && el < 420) || (el >= 980 && el < 1080);
+      flash(bin);
+      // tranche décalée pendant le binaire, comme une image qui saute
+      if (bin) c.style.transform = `translateX(${(Math.random() < 0.5 ? -1 : 1) * rand(0, 4)}px)`;
+    });
+    return {
+      done: tl.done, els: [c],
+      stop: () => { tl.stop(); anims.forEach(a => a.cancel()); flash(false); },
+    };
+  }
+
+  // 2. Ressort : la tête jaillit sur un ressort de boîte à surprise, fait un
+  //    tour complet façon hibou en haut, puis redescend avec un rebond.
+  function lureRessort(g) {
+    const head = lureEl('img', 'fz-lure fz-hit', g);
+    head.src = headImg.src;
+    head.alt = '';
+    head.draggable = false;
+    hittable(head);
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('class', 'fz-spring');
+    svg.setAttribute('width', g.w);
+    svg.setAttribute('height', g.h * 2);
+    const coil = document.createElementNS(NS, 'path');
+    const shine = document.createElementNS(NS, 'path');
+    coil.setAttribute('fill', 'none');
+    coil.setAttribute('stroke', '#7d8895');
+    coil.setAttribute('stroke-width', '3');
+    shine.setAttribute('fill', 'none');
+    shine.setAttribute('stroke', '#dfe5ec');
+    shine.setAttribute('stroke-width', '1');
+    coil.setAttribute('stroke-linecap', 'round');
+    coil.setAttribute('stroke-linejoin', 'round');
+    svg.append(coil, shine);
+    wrap.insertBefore(svg, head);
+    peekImg.classList.add('is-headless');
+
+    // le bas du ressort est sous le bord de l'écran, le haut sous le menton
+    const base = g.h * 0.98, LOOPS = 7, AMP = g.w * 0.09, D = g.h * 0.62;
+    const easeOutBack = t => 1 + 2.7 * Math.pow(t - 1, 3) + 1.7 * Math.pow(t - 1, 2);
+    let dx = 0, dy = 0, rot = 0;
+    const tl = timeline(1450, el => {
+      let lift, sq = 1;
+      if (el < 140) { lift = -0.06 * smoothstep(el / 140); sq = 1 - 0.1 * smoothstep(el / 140); } // on se tasse
+      else if (el < 460) lift = lerp(-0.06, 1, easeOutBack((el - 140) / 320));                    // boing
+      else if (el < 1100) lift = 1 + 0.04 * Math.sin((el - 460) / 70) * (1 - (el - 460) / 640);   // en haut, ça vibre
+      else lift = 1 - easeOutBounce((el - 1100) / 350);                                            // retour
+      const spin = el < 480 ? 0 : el < 1000 ? 360 * easeInOutCubic((el - 480) / 520) : 360;
+      dy = -D * lift;
+      dx = Math.sin(el / 90) * g.w * 0.05 * clamp(lift, 0, 1);
+      rot = spin % 360;
+      head.style.transform = `translate(${dx}px, ${dy}px) rotate(${spin}deg) scale(${2 - sq}, ${sq})`;
+      const top = g.cy + g.size * 0.36 + dy;
+      let d = `M${g.cx} ${base}`, e = '';
+      for (let i = 1; i <= LOOPS * 2; i++) {
+        const t = i / (LOOPS * 2);
+        const x = lerp(g.cx, g.cx + dx, t) + (i < LOOPS * 2 ? (i % 2 ? AMP : -AMP) : 0);
+        const y = lerp(base, top, t);
+        d += `L${x.toFixed(1)} ${y.toFixed(1)}`;
+        if (i % 2) e += `M${(x - 1).toFixed(1)} ${(y - 1).toFixed(1)}l-3 -1`;
+      }
+      coil.setAttribute('d', d);
+      shine.setAttribute('d', e);
+    });
+    return {
+      done: tl.done, els: [head, svg],
+      pose: () => ({ dx, dy, rot }),
+      stop: () => { tl.stop(); peekImg.classList.remove('is-headless'); },
+    };
+  }
+
+  function easeOutBounce(t) {
+    const n = 7.5625, d = 2.75;
+    if (t < 1 / d) return n * t * t;
+    if (t < 2 / d) return n * (t -= 1.5 / d) * t + 0.75;
+    if (t < 2.5 / d) return n * (t -= 2.25 / d) * t + 0.9375;
+    return n * (t -= 2.625 / d) * t + 0.984375;
+  }
+
+  // 3. Orbite : un mini Iridium tourne autour de la tête comme une lune (il
+  //    passe derrière), émet des pings, et une pastille « 1 » apparaît sur le
+  //    front, comme une notification pas lue.
+  function lureOrbite(g) {
+    const badge = lureEl('div', 'fz-badge fz-hit');
+    badge.textContent = '1';
+    hittable(badge);
+    Object.assign(badge.style, { left: g.cx + g.size * 0.26 + 'px', top: g.cy - g.size * 0.3 + 'px' });
+    const pop = badge.animate([
+      { transform: 'scale(0)' }, { transform: 'scale(1.35)', offset: 0.6 }, { transform: 'scale(1)' },
+    ], { duration: reduced ? 1 : 380, delay: reduced ? 0 : 250, easing: 'ease-out', fill: 'forwards' });
+    if (!reduced) badge.animate([
+      { boxShadow: '0 2px 6px rgba(0,0,0,.3), 0 0 0 0 rgba(229,72,77,.6)' },
+      { boxShadow: '0 2px 6px rgba(0,0,0,.3), 0 0 0 9px rgba(229,72,77,0)' },
+    ], { duration: 900, delay: 650, iterations: Infinity });
+    if (reduced) return { done: Promise.resolve(), els: [badge], stop: () => { pop.cancel(); } };
+
+    const sat = lureEl('div', 'fz-mini');
+    sat.innerHTML = SAT_SVG;
+    const pings = [];
+    const green = `rgb(${formatColor('bin').join(',')})`;
+    const RX = g.size * 0.62, RY = g.size * 0.15, TILT = (-14 * Math.PI) / 180, TURNS = 1.75, DUR = 1500;
+    let nextPing = 200;
+    const tl = timeline(DUR, el => {
+      const a = -Math.PI / 2 + TAU * TURNS * easeInOutCubic(el / DUR) + Math.PI;
+      const ex = RX * Math.cos(a), ey = RY * Math.sin(a);
+      const x = g.cx + ex * Math.cos(TILT) - ey * Math.sin(TILT);
+      const y = g.cy - g.size * 0.36 + ex * Math.sin(TILT) + ey * Math.cos(TILT);
+      const front = Math.sin(a) > 0;
+      const depth = 0.75 + 0.25 * Math.sin(a);
+      sat.style.zIndex = front ? '2' : '-1';
+      sat.style.opacity = String(clamp(el / 150, 0, 1) * clamp((DUR - el) / 200, 0, 1));
+      sat.style.transform = `translate(${x}px, ${y}px) rotate(${(Math.cos(a) * 25).toFixed(1)}deg) scale(${depth})`;
+      if (el >= nextPing && el < DUR - 250) {
+        nextPing += 380;
+        const p = lureEl('div', 'fz-ping');
+        Object.assign(p.style, { left: x + 'px', top: y + 'px', color: green, zIndex: front ? '2' : '-1' });
+        p.animate([{ opacity: 0.9, transform: 'scale(.4)' }, { opacity: 0, transform: 'scale(3.2)' }], { duration: 650, easing: 'ease-out', fill: 'forwards' });
+        pings.push(p);
+      }
+    });
+    badge.style.zIndex = '3';
+    return {
+      done: tl.done, els: [badge, sat, ...pings], stop: () => { tl.stop(); pings.forEach(p => p.remove()); },
+    };
+  }
+
+  // Un appât qui plante (canvas illisible en file://…) ne doit pas casser le peek.
+  function startLure() {
+    const before = new Set(wrap.children);
+    try {
+      return nextLure()(lureGeom());
+    } catch (err) {
+      console.warn('[freulere]', err);
+      [...wrap.children].forEach(el => { if (!before.has(el)) el.remove(); });
+      peekImg.classList.remove('is-headless');
+      return { done: Promise.resolve(), els: [], stop() {} };
+    }
+  }
+
+  const LURES = { glitch: lureGlitch, ressort: lureRessort, orbite: lureOrbite };
+  const LURE_ORDER = Object.keys(LURES);
+  let lureTurn = 0;
+  function nextLure() {
+    const forced = params.get('lure');
+    if (reduced) return lureOrbite; // sans mouvement : seulement la pastille
+    if (LURES[forced]) return LURES[forced];
+    return LURES[LURE_ORDER[lureTurn++ % LURE_ORDER.length]];
+  }
+
+  function caught(extra) {
+    const pose = headPose(extra);
     // La tête se détache : on masque la tête du peek (le canvas la reprend
     // au même endroit) et le corps repart dans le bord.
     const from = getComputedStyle(wrap).transform;
@@ -254,7 +532,7 @@
       anchor.style.visibility = 'hidden';
       peekImg.classList.remove('is-headless');
     });
-    hovered = false;
+    hovering.clear();
     const bin = document.getElementById('binary-input');
     if (bin && !isInView(bin)) bin.scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' });
     return iridium(pose).catch(err => console.warn('[freulere]', err));
@@ -448,23 +726,10 @@
     return out;
   }
 
-  // Satellite Iridium stylisé (corps doré, panneaux solaires, 3 antennes
-  // MMA, les panneaux réfléchissants à l'origine des « Iridium flares »).
   function makeSatellite() {
     const el = document.createElement('div');
     el.className = 'fz-sat';
-    el.innerHTML = `<svg viewBox="-40 -26 80 52" width="72" height="47" aria-hidden="true" stroke-linejoin="round">
-      <path d="M-14 -6H-7M7 -6H14" stroke="#8b96a3" stroke-width="1.4"/>
-      <g fill="#2b3a5c" stroke="#6f86b3" stroke-width=".7">
-        <rect x="-38" y="-11" width="24" height="10" rx="1"/><rect x="14" y="-11" width="24" height="10" rx="1"/>
-      </g>
-      <path d="M-30 -11v10M-22 -11v10M22 -11v10M30 -11v10M-38 -6h24M14 -6h24" stroke="#6f86b3" stroke-width=".45"/>
-      <path d="M-6 -20H6L7.5 10H-7.5Z" fill="#cfa84e" stroke="#8a6d2a" stroke-width=".7"/>
-      <path d="M0 -20V10" stroke="#ead08a" stroke-width=".7"/>
-      <g fill="#e4e9ef" stroke="#8b96a3" stroke-width=".7">
-        <path d="M-7.5 2L-17 16L-13 18L-5 5Z"/><path d="M7.5 2L17 16L13 18L5 5Z"/><path d="M-3.5 6H3.5L3 20H-3Z"/>
-      </g>
-    </svg><div class="fz-flare"></div><div class="fz-hud"></div>`;
+    el.innerHTML = `${SAT_SVG}<div class="fz-flare"></div><div class="fz-hud"></div>`;
     layer.appendChild(el);
     return el;
   }
