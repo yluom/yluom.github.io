@@ -1,10 +1,11 @@
 /*
  * Easter egg « freulere » pour le Paulschou Converter.
  *
- * Après 10 s passées sur la page (onglet visible), la tête de freulere fait un
+ * Après 3 s passées sur la page (onglet visible), la tête de freulere fait un
  * sneak peek de 1,6 s depuis un coin ou un bord aléatoire, disparaît 3 s, puis
- * revient ailleurs. Si la souris survole la tête, elle reste visible tant que
- * le survol dure (sinon elle est quasi impossible à attraper).
+ * revient ailleurs. Après l'animation du clic, elle revient au bout de 5 s.
+ * Si la souris survole la tête, elle reste visible tant que le survol dure
+ * (sinon elle est quasi impossible à attraper).
  *
  * Pendant le peek, un « appât » donne envie de cliquer, tiré au hasard parmi
  * glitch, ressort et orbite (jamais deux fois le même d'affilée). ?lure=<nom>
@@ -42,7 +43,7 @@
  *
  * ?egg dans l'URL : première apparition au bout de 1 s (pour tester).
  *
- * Contraintes : rien n'est chargé avant les 10 s, overlay en
+ * Contraintes : rien n'est chargé avant les 3 s, overlay en
  * pointer-events:none (seule la tête est cliquable), animations sur transform
  * / canvas uniquement, aucun accès au code de l'app (on passe par le DOM et
  * ses propres événements "input" / "blur").
@@ -53,11 +54,11 @@
   const params = new URLSearchParams(location.search);
 
   const CFG = {
-    firstDelay: params.has('egg') ? 1000 : 10000, // temps visible avant la 1re apparition
+    firstDelay: params.has('egg') ? 1000 : 3000,  // temps visible avant la 1re apparition
     peekHold: 1600,         // durée du sneak peek (au moins la durée de l'appât)
     peekGap: 3000,          // pause entre deux apparitions
     slide: 220,             // durée d'entrée / sortie
-    afterEffectGap: 15000,  // pause après l'animation
+    afterEffectGap: 5000,   // pause après l'animation
   };
 
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
