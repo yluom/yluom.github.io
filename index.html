@@ -59,6 +59,12 @@
       border-color: var(--accent);
       transform: translateY(-2px);
     }
+    .card.static:hover {
+      background: var(--card);
+      border-color: var(--border);
+      transform: none;
+    }
+    .card.static .url { color: var(--muted); }
     .card h3 { font-size: 1.05rem; font-weight: 600; margin-bottom: 0.25rem; }
     .card .url { font-size: 0.78rem; color: var(--accent); word-break: break-all; }
     .card p { font-size: 0.88rem; color: var(--muted); margin-top: 0.5rem; }
@@ -166,6 +172,12 @@
         <p>Jeu de fusion façon 2048 ou Suika, avec des blobs très mous, à jouer dans le navigateur.</p>
         <span class="tag">Vercel</span><span class="tag">TypeScript</span>
       </a>
+      <div class="card static">
+        <h3>Opération Merguez</h3>
+        <span class="url">en développement</span>
+        <p>Jeu tactique arcade : contenir un feu de forêt avant qu'il ne dévore villages, fermes et merguez.</p>
+        <span class="tag">TypeScript</span>
+      </div>
       <a class="card" href="https://github.com/yluom/guiks-o-metre" target="_blank" rel="noopener">
         <h3>Guiks-o-mètre</h3>
         <span class="url">github.com/yluom/guiks-o-metre</span>
